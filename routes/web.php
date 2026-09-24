@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\QrController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DashboardHrdController; // <-- TAMBAHAN: Import Controller HRD
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -25,4 +26,12 @@ Route::post('/absensi/scan', [QrController::class, 'scanAbsensi'])->name('absens
 // --- Dashboard karyawan (wajib login) ---
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    
+    // --- Dashboard HRD ---
+    Route::get('/dashboard-hrd', [DashboardHrdController::class, 'index'])->name('dashboard.hrd'); // <-- TAMBAHAN: Route untuk HRD
 });
+
+// <-- TAMBAHKAN KODE INI DI BAWAH ROUTE DASHBOARD HRD -->
+Route::get('/hrd/karyawan', [App\Http\Controllers\KaryawanController::class, 'index'])->name('karyawan.index');
+Route::get('/hrd/karyawan/create', [App\Http\Controllers\KaryawanController::class, 'create'])->name('karyawan.create');
+Route::post('/hrd/karyawan', [App\Http\Controllers\KaryawanController::class, 'store'])->name('karyawan.store');
