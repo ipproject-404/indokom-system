@@ -21,6 +21,16 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+
+            // --- TAMBAHAN KODE MULAI DARI SINI ---
+            // Cek apakah akun yang berhasil login memiliki role 'hrd'
+            if (Auth::user()->role === 'hrd') {
+                return redirect()->route('dashboard.hrd');
+            }
+            // --- TAMBAHAN KODE SELESAI ---
+
+            // Ini adalah kode asli Anda (tidak dihapus).
+            // Akan dieksekusi jika yang login BUKAN hrd (misal: karyawan)
             return redirect()->intended(route('dashboard'));
         }
 

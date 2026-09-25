@@ -67,9 +67,14 @@
                                     <span class="bg-rose-100 text-rose-700 px-2 py-1 rounded-md text-[11px] font-bold">NONAKTIF</span>
                                 @endif
                             </td>
+                            <!-- BAGIAN AKSI YANG DIPERBARUI -->
                             <td class="px-5 py-3 text-center">
-                                <button class="text-blue-600 hover:text-blue-800 mx-1" title="Edit"><i class="bi bi-pencil-square"></i></button>
-                                <button class="text-indigo-600 hover:text-indigo-800 mx-1" title="Cetak QR"><i class="bi bi-qr-code"></i></button>
+                                <a href="{{ route('karyawan.edit', $kry->id) }}" class="text-blue-600 hover:text-blue-800 mx-1 inline-block" title="Edit Data">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <a href="{{ route('karyawan.qr', $kry->id) }}" class="text-indigo-600 hover:text-indigo-800 mx-1 inline-block" title="Cetak QR" target="_blank">
+                                    <i class="bi bi-qr-code"></i>
+                                </a>
                             </td>
                         </tr>
                         @empty

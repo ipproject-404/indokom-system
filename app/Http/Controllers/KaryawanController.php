@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Karyawan;
 use App\Models\Jabatan;
 use App\Models\Departemen;
+use Illuminate\Support\Str; // <-- 1. TAMBAHKAN INI DI ATAS
 
 class KaryawanController extends Controller
 {
@@ -49,6 +50,7 @@ class KaryawanController extends Controller
         Karyawan::create([
             'nik_ktp' => $request->nik_ktp,
             'nik_kerja' => $request->nik_kerja,
+            'barcode_uid' => Str::random(40), // <-- 2. UBAH BAGIAN INI MENJADI 40 TOKEN ACAK
             'nama_lengkap' => $request->nama_lengkap,
             'tempat_lahir' => $request->tempat_lahir,
             'tanggal_lahir' => $request->tanggal_lahir,
@@ -64,4 +66,42 @@ class KaryawanController extends Controller
 
         return redirect()->route('karyawan.index')->with('success', 'Data Karyawan berhasil ditambahkan!');
     }
+
+    // ... kode Anda yang sudah ada di atas (index, create, store) ...
+
+    // Menampilkan halaman Edit Karyawan
+    public function edit($id)
+    {
+        $karyawan = Karyawan::findOrFail($id);
+        $jabatans = Jabatan::all();
+        $departemens = Departemen::all();
+        
+        return view('karyawan_edit', compact('karyawan', 'jabatans', 'departemens'));
+    }
+
+    // Menampilkan/Mencetak QR Code Karyawan
+    public function cetakQr($id)
+    {
+        $karyawan = Karyawan::findOrFail($id);
+        
+        return view('karyawan_qr', compact('karyawan'));
+    }
+
+    // Menyimpan perubahan data edit karyawan
+    public function update(Request $request, $id)
+    {
+        $karyawan = Karyawan::findOrFail($id);
+
+        $karyawan->update([
+            'nik_ktp' => $request->nik_ktp,
+            'nik_kerja' => $request->nik_kerja,
+            'nama_lengkap' => $request->nama_lengkap,
+            'jenis_kelamin' => $request->jenis_kelamin,
+            'alamat' => $request->alamat,
+            'status' => $request->status ?? $karyawan->status,
+        ]);
+
+        return redirect()->route('karyawan.index')->with('success', 'Data Karyawan berhasil diperbarui!');
+    }
+
 }

@@ -35,3 +35,8 @@ Route::middleware('auth')->group(function () {
 Route::get('/hrd/karyawan', [App\Http\Controllers\KaryawanController::class, 'index'])->name('karyawan.index');
 Route::get('/hrd/karyawan/create', [App\Http\Controllers\KaryawanController::class, 'create'])->name('karyawan.create');
 Route::post('/hrd/karyawan', [App\Http\Controllers\KaryawanController::class, 'store'])->name('karyawan.store');
+
+Route::get('/hrd/karyawan/{id}/edit', [App\Http\Controllers\KaryawanController::class, 'edit'])->name('karyawan.edit');
+Route::get('/hrd/karyawan/{id}/qr', [App\Http\Controllers\KaryawanController::class, 'cetakQr'])->name('karyawan.qr');
+
+Route::put('/hrd/karyawan/{id}', [App\Http\Controllers\KaryawanController::class, 'update'])->name('karyawan.update');

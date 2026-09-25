@@ -51,10 +51,11 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label>
+                        <!-- DIPERBAIKI: value diubah menjadi L dan P -->
                         <select name="jenis_kelamin" class="w-full border border-gray-300 rounded-lg p-2.5 outline-none" required>
                             <option value="">Pilih...</option>
-                            <option value="Laki-laki">Laki-laki</option>
-                            <option value="Perempuan">Perempuan</option>
+                            <option value="L">Laki-laki</option>
+                            <option value="P">Perempuan</option>
                         </select>
                     </div>
                 </div>
@@ -78,7 +79,8 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">No. Handphone</label>
-                        <input type="number" name="no_hp" class="w-full border border-gray-300 rounded-lg p-2.5 outline-none" required>
+                        <!-- HAPUS type="number" JIKA KOLOM no_hp BERTIPE VARCHAR -->
+                        <input type="text" name="no_hp" class="w-full border border-gray-300 rounded-lg p-2.5 outline-none" required>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Pendidikan Terakhir</label>
