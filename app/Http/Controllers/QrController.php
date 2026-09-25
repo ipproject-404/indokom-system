@@ -38,6 +38,14 @@ class QrController extends Controller
             return back()->withErrors(['token' => 'Karyawan ini belum punya akun login. Hubungi HR.']);
         }
 
+        // Sama seperti di scanAbsensi -- jangan biarkan QR orang lain
+        // diam-diam mengambil alih sesi yang sedang login sebagai user lain.
+        if (Auth::check() && Auth::id() !== $user->id) {
+            return back()->withErrors([
+                'token' => 'QR ini bukan milik akun yang sedang login (' . Auth::user()->username . '). Logout dulu jika memang ingin login sebagai pemilik QR ini.',
+            ]);
+        }
+
         Auth::login($user);
         $request->session()->regenerate();
 
@@ -74,6 +82,19 @@ class QrController extends Controller
 
         if (! $user) {
             return back()->withErrors(['token' => 'Karyawan ini belum punya akun login. Hubungi HR.']);
+        }
+
+        // ------------------------------------------------------------
+        // Cegah QR milik orang lain dipakai buat absen sambil masih
+        // login sebagai user yang berbeda. Tiap HP dipakai satu orang,
+        // jadi kalau sesi yang aktif bukan pemilik QR ini, tolak --
+        // ganti akun harus lewat logout secara sadar, bukan otomatis
+        // kepindah gara-gara ada QR lain yang discan.
+        // ------------------------------------------------------------
+        if (Auth::check() && Auth::id() !== $user->id) {
+            return back()->withErrors([
+                'token' => 'QR ini bukan milik akun yang sedang login (' . Auth::user()->username . '). Logout dulu jika memang ingin absen sebagai pemilik QR ini.',
+            ]);
         }
 
         // ------------------------------------------------------------
@@ -126,18 +147,27 @@ class QrController extends Controller
 
             $pesan = 'Absen masuk berhasil dicatat pukul ' . $sekarang->format('H:i:s') . '.';
         } elseif (! $presensi->jam_pulang) {
-            // Sudah ada jam masuk, belum ada jam pulang -> Clock Out
-            $presensi->update([
-                'jam_pulang' => $sekarang->toTimeString(),
-                'latitude_pulang' => $request->latitude,
-                'longitude_pulang' => $request->longitude,
-                'alamat_pulang' => $alamat,
-                'nama_jalan_pulang' => $namaJalan,
-                'jarak_pulang_meter' => round($jarakMeter, 2),
-                'status_radius_pulang' => $statusRadius,
-            ]);
+            // Wajib jeda minimal 1 jam sejak absen masuk sebelum bisa absen
+            // pulang -- dihitung ulang di server, bukan percaya dari tombol
+            // dashboard saja, supaya tidak bisa dilewati lewat akses URL langsung.
+            $batasAbsenPulang = Carbon::parse($presensi->tanggal . ' ' . $presensi->jam_masuk)->addHour();
 
-            $pesan = 'Absen pulang berhasil dicatat pukul ' . $sekarang->format('H:i:s') . '.';
+            if ($sekarang->lessThan($batasAbsenPulang)) {
+                $pesan = 'Absen pulang baru bisa dilakukan mulai pukul ' . $batasAbsenPulang->format('H:i') . ' (minimal 1 jam setelah absen masuk).';
+            } else {
+                // Sudah ada jam masuk, belum ada jam pulang, dan sudah lewat jeda -> Clock Out
+                $presensi->update([
+                    'jam_pulang' => $sekarang->toTimeString(),
+                    'latitude_pulang' => $request->latitude,
+                    'longitude_pulang' => $request->longitude,
+                    'alamat_pulang' => $alamat,
+                    'nama_jalan_pulang' => $namaJalan,
+                    'jarak_pulang_meter' => round($jarakMeter, 2),
+                    'status_radius_pulang' => $statusRadius,
+                ]);
+
+                $pesan = 'Absen pulang berhasil dicatat pukul ' . $sekarang->format('H:i:s') . '.';
+            }
         } else {
             $pesan = 'Kamu sudah tercatat absen masuk dan pulang hari ini.';
         }

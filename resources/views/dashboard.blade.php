@@ -23,6 +23,45 @@
     $namaTampil = $karyawan->nama_lengkap ?? $user->username;
     $jabatanTampil = $karyawan->jabatan->nama_jabatan ?? ucfirst($user->role);
     $tanggalHariIni = \Carbon\Carbon::now()->translatedFormat('l, d F Y');
+
+    // ==========================================================
+    // Gating tombol absen: cegah scan berulang setelah selesai,
+    // dan wajibkan jeda 1 jam antara absen masuk & absen pulang.
+    // Ini baru pengecekan di sisi tampilan (biar user tidak
+    // buang waktu scan sia-sia) -- validasi yang benar-benar
+    // menentukan tetap dihitung ulang di server (QrController).
+    // ==========================================================
+    $sudahMasuk = (bool) $presensiHariIni?->jam_masuk;
+    $sudahPulang = (bool) $presensiHariIni?->jam_pulang;
+    $absenSelesai = $sudahMasuk && $sudahPulang;
+
+    $batasAbsenPulang = null;
+    $bolehAbsenPulang = true;
+    if ($sudahMasuk && !$sudahPulang) {
+        $batasAbsenPulang = \Carbon\Carbon::parse($presensiHariIni->tanggal . ' ' . $presensiHariIni->jam_masuk)->addHour();
+        $bolehAbsenPulang = \Carbon\Carbon::now()->greaterThanOrEqualTo($batasAbsenPulang);
+    }
+
+    $tombolAbsenAktif = !$absenSelesai && $bolehAbsenPulang;
+
+    $pesanTombolNonaktif = $absenSelesai
+        ? 'Kamu sudah absen masuk dan pulang hari ini.'
+        : (! $bolehAbsenPulang
+            ? 'Absen pulang baru bisa dilakukan mulai pukul ' . $batasAbsenPulang->format('H:i') . ' (minimal 1 jam setelah absen masuk).'
+            : '');
+
+    // Info lokasi buat pelengkap tampilan jam masuk/pulang.
+    // Dalam radius kantor -> tampilkan nama PT (dari alamat_masuk/pulang,
+    // yang memang diisi nama kantor kalau dalam radius, lihat QrController).
+    // Di luar radius (misal karyawan tugas luar) -> tampilkan nama jalan,
+    // lebih berguna daripada nama kantor yang jelas-jelas tidak relevan.
+    $lokasiMasukTampil = $presensiHariIni && $presensiHariIni->status_radius_masuk === 'dalam_radius'
+        ? $presensiHariIni->alamat_masuk
+        : $presensiHariIni?->nama_jalan_masuk;
+
+    $lokasiPulangTampil = $presensiHariIni && $presensiHariIni->status_radius_pulang === 'dalam_radius'
+        ? $presensiHariIni->alamat_pulang
+        : $presensiHariIni?->nama_jalan_pulang;
 @endphp
 
 {{-- ================================================================
@@ -155,15 +194,21 @@
                     <div class="col-6 border-end border-2">
                         <div class="text-muted small fw-semibold mb-1">MASUK</div>
                         <div class="fw-bold fs-4 text-dark">{{ $jamMasuk }}</div>
+                        <div class="text-muted mt-1" style="font-size: 0.7rem; line-height: 1.2;">
+                            <i class="bi bi-geo-alt"></i> {{ $lokasiMasukTampil ?? 'Belum absen' }}
+                        </div>
                     </div>
                     <div class="col-6">
                         <div class="text-muted small fw-semibold mb-1">KELUAR</div>
                         <div class="fw-bold fs-4 text-dark">{{ $jamPulang }}</div>
+                        <div class="text-muted mt-1" style="font-size: 0.7rem; line-height: 1.2;">
+                            <i class="bi bi-geo-alt"></i> {{ $lokasiPulangTampil ?? 'Belum absen' }}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <a href="{{ route('absensi.scan') }}" class="btn btn-primary w-100 py-3 fw-bold rounded-3 shadow-sm d-flex justify-content-center align-items-center">
+            <a href="{{ route('absensi.scan') }}" class="btn btn-primary w-100 py-3 fw-bold rounded-3 shadow-sm d-flex justify-content-center align-items-center" onclick="return cekTombolAbsen(event)">
                 <i class="bi bi-qr-code-scan me-2 fs-5"></i> {{ $labelStatusAbsen }}
             </a>
         </div>
@@ -479,6 +524,9 @@
                     <div>
                         <div class="label">Jam Masuk</div>
                         <div class="value">{{ $jamMasuk }}</div>
+                        <div class="text-muted mt-1" style="font-size: 0.72rem;">
+                            <i class="bi bi-geo-alt"></i> {{ $lokasiMasukTampil ?? 'Belum absen' }}
+                        </div>
                     </div>
                     <div class="icon-box" style="background:#fef3c7; color:#f59e0b;">
                         <i class="bi bi-box-arrow-in-right"></i>
@@ -490,6 +538,9 @@
                     <div>
                         <div class="label">Jam Pulang</div>
                         <div class="value">{{ $jamPulang }}</div>
+                        <div class="text-muted mt-1" style="font-size: 0.72rem;">
+                            <i class="bi bi-geo-alt"></i> {{ $lokasiPulangTampil ?? 'Belum absen' }}
+                        </div>
                     </div>
                     <div class="icon-box" style="background:#dbeafe; color:#2563eb;">
                         <i class="bi bi-box-arrow-left"></i>
@@ -509,7 +560,7 @@
                             <div class="time-display" id="realtime-clock-desktop">--:--:--</div>
                             <div class="small opacity-75 mt-1">WIB</div>
                         </div>
-                        <a href="{{ route('absensi.scan') }}" class="btn-clock">
+                        <a href="{{ route('absensi.scan') }}" class="btn-clock" onclick="return cekTombolAbsen(event)">
                             <i class="bi bi-qr-code-scan"></i> {{ $labelStatusAbsen }}
                         </a>
                     </div>
@@ -518,7 +569,7 @@
             <div class="col-4">
                 <div class="panel h-100">
                     <h6>Aksi Cepat</h6>
-                    <a href="{{ route('absensi.scan') }}" class="aksi-cepat-item">
+                    <a href="{{ route('absensi.scan') }}" class="aksi-cepat-item" onclick="return cekTombolAbsen(event)">
                         <span class="icon-box" style="background:#2563eb;"><i class="bi bi-qr-code-scan"></i></span>
                         <span>
                             <span class="judul d-block">Scan Absensi</span>
@@ -555,8 +606,85 @@
     </main>
 </div>
 
+{{-- Toast notifikasi custom (pengganti alert()) -- satu elemen dipakai
+     bersama oleh versi mobile maupun desktop karena posisinya fixed. --}}
+<style>
+    .toast-notif {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translateX(-50%) translateY(16px);
+        max-width: 92%;
+        width: 380px;
+        background: #1e293b;
+        color: #fff;
+        border-radius: 14px;
+        padding: 14px 14px 14px 16px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+        z-index: 2000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .toast-notif.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+        pointer-events: auto;
+    }
+    .toast-notif-icon { font-size: 1.25rem; color: #f59e0b; flex-shrink: 0; margin-top: 1px; }
+    .toast-notif-text { font-size: 0.85rem; line-height: 1.4; flex-grow: 1; }
+    .toast-notif-close {
+        background: none; border: none; color: rgba(255,255,255,0.55);
+        padding: 2px; flex-shrink: 0; line-height: 1;
+    }
+    .toast-notif-close:hover { color: #fff; }
+</style>
+<div id="toast-notif" class="toast-notif" role="alert" aria-live="assertive">
+    <i class="bi bi-exclamation-circle-fill toast-notif-icon"></i>
+    <div class="toast-notif-text" id="toast-notif-text"></div>
+    <button type="button" class="toast-notif-close" onclick="tutupToast()" aria-label="Tutup">
+        <i class="bi bi-x-lg"></i>
+    </button>
+</div>
+
 @push('scripts')
 <script>
+    // Dikirim dari server supaya konsisten dengan logic PHP di atas
+    const ABSEN_TOMBOL_AKTIF = @json($tombolAbsenAktif);
+    const ABSEN_PESAN_NONAKTIF = @json($pesanTombolNonaktif);
+
+    // Dipasang di semua tombol/link menuju halaman scan absensi.
+    // Kalau tombol sedang tidak aktif, klik dibatalkan dan toast
+    // muncul menjelaskan alasannya -- jadi user tidak perlu buka
+    // kamera & cari GPS dulu baru tahu absennya ditolak.
+    function cekTombolAbsen(event) {
+        if (!ABSEN_TOMBOL_AKTIF) {
+            event.preventDefault();
+            tampilkanToast(ABSEN_PESAN_NONAKTIF);
+            return false;
+        }
+        return true;
+    }
+
+    let toastTimeout;
+    function tampilkanToast(pesan) {
+        const toast = document.getElementById('toast-notif');
+        const teks = document.getElementById('toast-notif-text');
+        if (!toast || !teks) return;
+        teks.innerText = pesan;
+        toast.classList.add('show');
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => toast.classList.remove('show'), 4500);
+    }
+    function tutupToast() {
+        const toast = document.getElementById('toast-notif');
+        if (toast) toast.classList.remove('show');
+        clearTimeout(toastTimeout);
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         function updateClock() {
             const now = new Date();
