@@ -69,15 +69,13 @@
                                     <span class="bg-rose-100 text-rose-700 px-2 py-1 rounded-md text-[11px] font-bold">NONAKTIF</span>
                                 @endif
                             </td>
-                            <!-- AKSI: Ditambah tombol Detail (Ikon Mata) -->
+                            <!-- AKSI: Hanya Detail dan Cetak QR -->
                             <td class="px-5 py-3 text-center whitespace-nowrap">
-                                <a href="{{ route('karyawan.show', $kry->id) }}" class="text-emerald-600 hover:text-emerald-800 mx-1 inline-block" title="Detail Karyawan">
+                                <a href="{{ route('karyawan.show', $kry->id) }}" class="text-emerald-600 hover:text-emerald-800 mx-2 inline-block" title="Detail Karyawan">
                                     <i class="bi bi-eye-fill"></i>
                                 </a>
-                                <a href="{{ route('karyawan.edit', $kry->id) }}" class="text-blue-600 hover:text-blue-800 mx-1 inline-block" title="Edit Data">
-                                    <i class="bi bi-pencil-square"></i>
-                                </a>
-                                <a href="{{ route('karyawan.qr', $kry->id) }}" class="text-indigo-600 hover:text-indigo-800 mx-1 inline-block" title="Cetak QR" target="_blank">
+                                <!-- Tombol Edit Dihapus dari sini -->
+                                <a href="{{ route('karyawan.qr', $kry->id) }}" class="text-indigo-600 hover:text-indigo-800 mx-2 inline-block" title="Cetak QR" target="_blank">
                                     <i class="bi bi-qr-code"></i>
                                 </a>
                             </td>

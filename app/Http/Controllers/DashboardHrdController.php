@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth; // <-- TAMBAHAN: Untuk mengecek user yang sedang login
 
 // Memanggil Model Database berdasarkan ERD
 use App\Models\Karyawan;
@@ -52,6 +53,19 @@ class DashboardHrdController extends Controller
                              ->take(5)
                              ->get();
 
+        // ==========================================
+        // 5. DATA ABSENSI HRD HARI INI (TAMBAHAN BARU)
+        // ==========================================
+        // Mengambil ID Karyawan dari Akun User HRD yang sedang login
+        $karyawan_id_hrd = Auth::user()->karyawan_id ?? null;
+        $presensiHrdHariIni = null;
+        
+        if ($karyawan_id_hrd) {
+            $presensiHrdHariIni = Presensi::where('karyawan_id', $karyawan_id_hrd)
+                                          ->whereDate('tanggal', $hariIni)
+                                          ->first();
+        }
+
         // Mengirim semua data di atas ke file blade HTML
         return view('dashboard_hrd', compact(
             'totalKaryawanAktif', 
@@ -60,7 +74,8 @@ class DashboardHrdController extends Controller
             'qrTercetak',
             'karyawans',
             'lemburs',
-            'presensis'
+            'presensis',
+            'presensiHrdHariIni' // <-- Variabel baru dikirim ke Blade
         ));
     }
 }
