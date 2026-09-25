@@ -43,3 +43,16 @@ Route::put('/hrd/karyawan/{id}', [App\Http\Controllers\KaryawanController::class
 
 // Tambahkan baris ini di bawah route karyawan.index / karyawan.create Anda
 Route::get('/hrd/karyawan/{id}/detail', [App\Http\Controllers\KaryawanController::class, 'show'])->name('karyawan.show');
+
+use App\Http\Controllers\JabatanDepartemenController;
+
+// Rute Kelola Jabatan & Departemen (HRD)
+Route::get('/hrd/jabatan-departemen', [JabatanDepartemenController::class, 'index'])->name('jabatan.departemen.index');
+Route::post('/hrd/departemen/store', [JabatanDepartemenController::class, 'storeDepartemen'])->name('departemen.store');
+Route::delete('/hrd/departemen/{id}', [JabatanDepartemenController::class, 'destroyDepartemen'])->name('departemen.destroy');
+
+Route::post('/hrd/jabatan/store', [JabatanDepartemenController::class, 'storeJabatan'])->name('jabatan.store');
+Route::delete('/hrd/jabatan/{id}', [JabatanDepartemenController::class, 'destroyJabatan'])->name('jabatan.destroy');
+
+Route::put('/hrd/departemen/{id}', [JabatanDepartemenController::class, 'updateDepartemen'])->name('departemen.update');
+Route::put('/hrd/jabatan/{id}', [JabatanDepartemenController::class, 'updateJabatan'])->name('jabatan.update');

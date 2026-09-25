@@ -18,7 +18,7 @@
                 <h1 class="font-bold text-xl text-gray-800">Kelola Data Karyawan</h1>
             </div>
         </div>
-        <a href="{{ route('karyawan.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+        <a href="{{ route('karyawan.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm">
             <i class="bi bi-plus-lg mr-1"></i> Tambah Karyawan
         </a>
     </nav>
@@ -34,6 +34,70 @@
             </div>
         </div>
         @endif
+
+        <!-- KOTAK FILTER PENCARIAN -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+            <form action="{{ route('karyawan.index') }}" method="GET" class="flex flex-col md:flex-row gap-4">
+                <!-- Cari Nama/NIK -->
+                <div class="flex-1">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Cari Karyawan</label>
+                    <div class="relative">
+                        <i class="bi bi-search absolute left-3 top-2.5 text-gray-400"></i>
+                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Ketik nama atau NIK..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition-shadow">
+                    </div>
+                </div>
+                
+                <!-- Filter Departemen -->
+                <div class="w-full md:w-48">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Departemen</label>
+                    <select name="departemen" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none">
+                        <option value="">Semua Departemen</option>
+                        @foreach($departemens as $dept)
+                            <option value="{{ $dept->id }}" {{ request('departemen') == $dept->id ? 'selected' : '' }}>{{ $dept->nama_departemen }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <!-- Filter Jabatan -->
+                <div class="w-full md:w-48">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Jabatan</label>
+                    <select name="jabatan" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none">
+                        <option value="">Semua Jabatan</option>
+                        @foreach($jabatans as $jab)
+                            <option value="{{ $jab->id }}" {{ request('jabatan') == $jab->id ? 'selected' : '' }}>{{ $jab->nama_jabatan }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <!-- Filter Status -->
+                <div class="w-full md:w-36">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Status</label>
+                    <select name="status" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none">
+                        <option value="">Semua Status</option>
+                        <option value="aktif" {{ request('status') == 'aktif' ? 'selected' : '' }}>Aktif</option>
+                        <option value="nonaktif" {{ request('status') == 'nonaktif' ? 'selected' : '' }}>Nonaktif</option>
+                    </select>
+                </div>
+
+                <!-- Tombol Submit, Excel, & Reset -->
+                <div class="flex items-end gap-2">
+                    <button type="submit" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors shadow-sm">
+                        Filter
+                    </button>
+                    
+                    <!-- TOMBOL EXPORT EXCEL -->
+                    <button type="submit" name="export" value="excel" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm flex items-center">
+                        <i class="bi bi-file-earmark-excel mr-1"></i> Excel
+                    </button>
+
+                    @if(request()->hasAny(['search', 'departemen', 'jabatan', 'status']))
+                    <a href="{{ route('karyawan.index') }}" class="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors" title="Reset Filter">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                    @endif
+                </div>
+            </form>
+        </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="overflow-x-auto">
@@ -56,7 +120,7 @@
                             </td>
                             <td class="px-5 py-3">
                                 <div>{{ $kry->no_hp }}</div>
-                                <div class="text-xs text-gray-400">{{ $kry->jenis_kelamin }}</div>
+                                <div class="text-xs text-gray-400">{{ $kry->jenis_kelamin == 'L' ? 'Laki-laki' : 'Perempuan' }}</div>
                             </td>
                             <td class="px-5 py-3">
                                 <div class="text-gray-800 font-medium">{{ $kry->jabatan->nama_jabatan ?? '-' }}</div>
@@ -64,9 +128,9 @@
                             </td>
                             <td class="px-5 py-3 text-center">
                                 @if($kry->status == 'aktif')
-                                    <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-[11px] font-bold">AKTIF</span>
+                                    <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-[11px] font-bold tracking-wide">AKTIF</span>
                                 @else
-                                    <span class="bg-rose-100 text-rose-700 px-2 py-1 rounded-md text-[11px] font-bold">NONAKTIF</span>
+                                    <span class="bg-rose-100 text-rose-700 px-2 py-1 rounded-md text-[11px] font-bold tracking-wide">NONAKTIF</span>
                                 @endif
                             </td>
                             <!-- AKSI: Hanya Detail dan Cetak QR -->
@@ -74,18 +138,28 @@
                                 <a href="{{ route('karyawan.show', $kry->id) }}" class="text-emerald-600 hover:text-emerald-800 mx-2 inline-block" title="Detail Karyawan">
                                     <i class="bi bi-eye-fill"></i>
                                 </a>
-                                <!-- Tombol Edit Dihapus dari sini -->
+                                <!-- Tombol Edit Dihapus -->
                                 <a href="{{ route('karyawan.qr', $kry->id) }}" class="text-indigo-600 hover:text-indigo-800 mx-2 inline-block" title="Cetak QR" target="_blank">
                                     <i class="bi bi-qr-code"></i>
                                 </a>
                             </td>
                         </tr>
                         @empty
-                        <tr><td colspan="5" class="px-5 py-4 text-center text-gray-500">Belum ada data karyawan.</td></tr>
+                        <tr>
+                            <td colspan="5" class="px-5 py-8 text-center text-gray-500">
+                                <div class="flex flex-col items-center justify-center">
+                                    <i class="bi bi-search text-3xl mb-2 text-gray-300"></i>
+                                    <p>Data karyawan tidak ditemukan.</p>
+                                </div>
+                            </td>
+                        </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Jika Anda ingin menambahkan pagination bawaan laravel nanti -->
+            <!-- <div class="px-5 py-3 border-t border-gray-200"> { { $karyawans->links() } } </div> -->
         </div>
     </div>
 </body>

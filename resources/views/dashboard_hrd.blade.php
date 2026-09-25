@@ -25,7 +25,7 @@
 <div class="flex min-h-screen bg-gray-50">
 
     <!-- =========================
-         SIDEBAR (TIDAK ADA PERUBAHAN)
+         SIDEBAR
     ========================== -->
     <aside id="sidebar" class="bg-white border-r border-gray-200 flex flex-col w-[260px] shrink-0">
         <div class="p-4 border-b border-gray-200">
@@ -56,7 +56,8 @@
                 <i class="bi bi-person-plus-fill mr-3"></i>
                 <span class="text-sm font-medium">Tambah Karyawan</span>
             </a>
-            <a href="#" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
+            <!-- LINK JABATAN & DEPARTEMEN SUDAH BERFUNGSI -->
+            <a href="{{ route('jabatan.departemen.index') }}" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
                 <i class="bi bi-diagram-3-fill mr-3"></i>
                 <span class="text-sm font-medium">Jabatan & Departemen</span>
             </a>
@@ -130,7 +131,7 @@
 
             <!-- STATISTIC & ABSENSI HRD -->
             <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
-                <!-- KOTAK ABSENSI HRD (MENGGANTIKAN KOTAK QR) -->
+                <!-- KOTAK ABSENSI HRD -->
                 <div class="xl:col-span-1 md:col-span-3 bg-blue-600 rounded-xl shadow-sm text-white p-5 flex flex-col justify-between relative overflow-hidden">
                     <div class="absolute top-0 right-0 p-4 opacity-20">
                         <i class="bi bi-qr-code-scan text-6xl"></i>
@@ -220,26 +221,58 @@
                                             <div class="text-xs font-medium text-gray-800"><span class="text-emerald-600 font-bold mr-1">Masuk:</span> {{ \Carbon\Carbon::parse($prs->jam_masuk)->format('H:i') }} WIB</div>
                                             <div class="text-xs font-medium text-gray-400 mt-0.5"><span class="text-rose-400 font-bold mr-1">Pulang:</span> {{ $prs->jam_pulang ? \Carbon\Carbon::parse($prs->jam_pulang)->format('H:i') . ' WIB' : '-' }}</div>
                                         </td>
+                                        <!-- KOLOM TITIK LOKASI -->
                                         <td class="px-5 py-3">
-                                            <div class="text-xs text-gray-600 mb-1">
-                                                <i class="bi bi-geo-alt-fill text-emerald-500 mr-1"></i> <span class="font-medium text-gray-500">In:</span> 
-                                                @if($prs->latitude_masuk && $prs->longitude_masuk)
-                                                    <a href="https://maps.google.com/?q={{ $prs->latitude_masuk }},{{ $prs->longitude_masuk }}" target="_blank" class="text-blue-600 hover:underline">
-                                                        {{ $prs->latitude_masuk }}, {{ $prs->longitude_masuk }}
-                                                    </a>
-                                                @else
-                                                    <span class="text-gray-400 italic">Tidak ada lokasi</span>
-                                                @endif
-                                            </div>
-                                            <div class="text-xs text-gray-600">
-                                                <i class="bi bi-geo-alt-fill text-rose-500 mr-1"></i> <span class="font-medium text-gray-500">Out:</span> 
-                                                @if($prs->latitude_pulang && $prs->longitude_pulang)
-                                                    <a href="https://maps.google.com/?q={{ $prs->latitude_pulang }},{{ $prs->longitude_pulang }}" target="_blank" class="text-blue-600 hover:underline">
-                                                        {{ $prs->latitude_pulang }}, {{ $prs->longitude_pulang }}
-                                                    </a>
-                                                @else
-                                                    <span class="text-gray-400 italic">Tidak ada lokasi</span>
-                                                @endif
+                                            <div class="text-xs space-y-1.5">
+                                                <!-- Masuk (In) -->
+                                                <div>
+                                                    <span class="font-semibold text-emerald-600">In:</span> 
+                                                    @if($prs->latitude_masuk && $prs->longitude_masuk)
+                                                        <a href="https://maps.google.com/?q={{ $prs->latitude_masuk }},{{ $prs->longitude_masuk }}" target="_blank" class="text-blue-600 hover:underline font-medium">
+                                                            @if($prs->alamat_masuk && $prs->nama_jalan_masuk)
+                                                                {{ $prs->alamat_masuk }} {{ $prs->nama_jalan_masuk }}
+                                                            @else
+                                                                {{ $prs->alamat_masuk ?? ($prs->nama_jalan_masuk ?? $prs->latitude_masuk.', '.$prs->longitude_masuk) }}
+                                                            @endif
+                                                        </a>
+                                                        @if($prs->jarak_masuk_meter)
+                                                            <span class="text-gray-500">({{ $prs->jarak_masuk_meter }} m)</span>
+                                                        @endif
+                                                        
+                                                        @if($prs->status_radius_masuk == 'dalam_radius')
+                                                            <span class="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">Dalam Radius</span>
+                                                        @elseif($prs->status_radius_masuk)
+                                                            <span class="bg-rose-100 text-rose-700 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">Luar Radius</span>
+                                                        @endif
+                                                    @else
+                                                        <span class="text-gray-400 italic">Tidak ada lokasi</span>
+                                                    @endif
+                                                </div>
+
+                                                <!-- Pulang (Out) -->
+                                                <div>
+                                                    <span class="font-semibold text-rose-500">Out:</span> 
+                                                    @if(isset($prs->latitude_pulang) && $prs->latitude_pulang)
+                                                        <a href="https://maps.google.com/?q={{ $prs->latitude_pulang }},{{ $prs->longitude_pulang }}" target="_blank" class="text-blue-600 hover:underline font-medium">
+                                                            @if(isset($prs->alamat_pulang) && $prs->alamat_pulang && isset($prs->nama_jalan_pulang) && $prs->nama_jalan_pulang)
+                                                                {{ $prs->alamat_pulang }} {{ $prs->nama_jalan_pulang }}
+                                                            @else
+                                                                {{ $prs->alamat_pulang ?? ($prs->nama_jalan_pulang ?? $prs->latitude_pulang.', '.$prs->longitude_pulang) }}
+                                                            @endif
+                                                        </a>
+                                                        @if(isset($prs->jarak_pulang_meter) && $prs->jarak_pulang_meter)
+                                                            <span class="text-gray-500">({{ $prs->jarak_pulang_meter }} m)</span>
+                                                        @endif
+
+                                                        @if(isset($prs->status_radius_pulang) && $prs->status_radius_pulang == 'dalam_radius')
+                                                            <span class="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">Dalam Radius</span>
+                                                        @elseif(isset($prs->status_radius_pulang) && $prs->status_radius_pulang)
+                                                            <span class="bg-rose-100 text-rose-700 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">Luar Radius</span>
+                                                        @endif
+                                                    @else
+                                                        <span class="text-gray-400 italic">Belum absen pulang</span>
+                                                    @endif
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
