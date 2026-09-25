@@ -183,77 +183,137 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         let lokasiSiap = false;
-        
+
         const statusBox = document.getElementById('status-lokasi');
         const locIcon = document.getElementById('loc-icon');
         const locTitle = document.getElementById('loc-title');
         const locContent = document.getElementById('loc-content');
+        const readerBox = document.getElementById('reader');
+        const overlay = document.getElementById('scanner-overlay');
+
+        function tampilkanSuksesLokasi(lat, lng) {
+            statusBox.className = 'location-status loc-success mb-4';
+            locIcon.className = 'bi bi-geo-alt-fill me-2 text-success fs-5';
+            locIcon.parentElement.className = 'd-flex align-items-center mb-1';
+            locTitle.className = 'text-success fw-bold';
+            locTitle.innerText = 'Lokasi Ditemukan';
+            locContent.innerHTML = `
+                <div class="text-success" style="font-size: 0.8rem;">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Latitude:</span> <strong>${lat.toFixed(6)}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Longitude:</span> <strong>${lng.toFixed(6)}</strong>
+                    </div>
+                </div>
+            `;
+        }
+
+        function tampilkanErrorLokasi(judul, pesan) {
+            statusBox.className = 'location-status loc-error mb-4';
+            locIcon.className = 'bi bi-exclamation-triangle-fill me-2 text-danger fs-5';
+            locIcon.parentElement.className = 'd-flex align-items-center mb-2';
+            locTitle.className = 'text-danger fw-bold';
+            locTitle.innerText = judul;
+            locContent.innerHTML = `<div class="text-danger lh-sm" style="font-size: 0.8rem;">${pesan}</div>`;
+        }
+
+        function tampilkanErrorKamera(judul, pesan) {
+            readerBox.innerHTML = `
+                <div class="d-flex flex-column align-items-center justify-content-center p-4 bg-light border border-warning rounded-4 text-center">
+                    <i class="bi bi-camera-video-off text-warning mb-2" style="font-size: 2.5rem;"></i>
+                    <h6 class="text-dark fw-bold mb-2">${judul}</h6>
+                    <p class="text-muted small mb-0">${pesan}</p>
+                </div>
+            `;
+            overlay.style.display = 'none';
+        }
+
+        // ==========================================================
+        // 0. CEK SECURE CONTEXT
+        // Browser modern MEMBLOKIR TOTAL akses GPS & Kamera kalau
+        // halaman dibuka lewat "http://" biasa (selain localhost/
+        // 127.0.0.1) -- walau izin di HP/Windows sudah Allow. Ini
+        // penyebab paling umum dari "sudah aktif tapi tetap ditolak".
+        // ==========================================================
+        if (!window.isSecureContext) {
+            tampilkanErrorLokasi(
+                'Koneksi Tidak Aman (Bukan HTTPS)',
+                'Browser memblokir GPS karena halaman ini dibuka lewat "http://" biasa, bukan "https://" atau "localhost". Ini tetap terjadi walau izin lokasi di HP/Windows sudah dinyalakan. Akses halaman lewat HTTPS (domain asli, ngrok, atau Laravel Herd/Valet) untuk mengatasinya.'
+            );
+            tampilkanErrorKamera(
+                'Kamera Diblokir Browser',
+                'Kamera tidak bisa dipakai karena koneksi bukan HTTPS/localhost. Gunakan HTTPS agar kamera bisa diakses.'
+            );
+            return;
+        }
 
         // Opsi pencarian GPS: Timeout diperpanjang jadi 20 detik (cocok untuk laptop/sinyal lemah)
         const geoOptions = {
             enableHighAccuracy: true,
-            timeout: 20000, 
+            timeout: 20000,
             maximumAge: 0
         };
+
+        // ==========================================================
+        // 1. CEK STATUS IZIN LEBIH AWAL (kalau browser mendukung)
+        // Kalau status sudah 'denied', browser TIDAK akan menampilkan
+        // pop-up izin lagi -- harus direset manual lewat ikon gembok
+        // di address bar. Kita kasih tahu ini lebih awal daripada
+        // menunggu timeout 20 detik dulu.
+        // ==========================================================
+        if (navigator.permissions && navigator.permissions.query) {
+            navigator.permissions.query({ name: 'geolocation' }).then(function(status) {
+                if (status.state === 'denied') {
+                    tampilkanErrorLokasi(
+                        'Izin Lokasi Diblokir di Browser',
+                        'Izin lokasi untuk situs ini sudah pernah ditolak, jadi browser tidak akan menampilkan pop-up izin lagi -- menyalakan GPS di Settings HP/Windows saja tidak cukup. Klik ikon gembok 🔒 di address bar → ubah "Lokasi" ke Allow → refresh halaman.'
+                    );
+                }
+            }).catch(function() {});
+
+            navigator.permissions.query({ name: 'camera' }).then(function(status) {
+                if (status.state === 'denied') {
+                    tampilkanErrorKamera(
+                        'Izin Kamera Diblokir di Browser',
+                        'Izin kamera untuk situs ini sudah pernah ditolak. Klik ikon gembok 🔒 di address bar → ubah "Kamera" ke Allow → refresh halaman.'
+                    );
+                }
+            }).catch(function() {});
+        }
 
         // Mengambil Lokasi GPS
         navigator.geolocation.getCurrentPosition(
             (pos) => {
                 const lat = pos.coords.latitude;
                 const lng = pos.coords.longitude;
-                
                 document.getElementById('latitude-input').value = lat;
                 document.getElementById('longitude-input').value = lng;
-                
-                // Ubah UI ke Success
-                statusBox.className = 'location-status loc-success mb-4';
-                locIcon.className = 'bi bi-geo-alt-fill me-2 text-success fs-5';
-                locIcon.parentElement.className = 'd-flex align-items-center mb-1';
-                locTitle.className = 'text-success fw-bold';
-                locTitle.innerText = 'Lokasi Ditemukan';
-                
-                // Tampilkan koordinat aktual
-                locContent.innerHTML = `
-                    <div class="text-success" style="font-size: 0.8rem;">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span>Latitude:</span> <strong>${lat.toFixed(6)}</strong>
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <span>Longitude:</span> <strong>${lng.toFixed(6)}</strong>
-                        </div>
-                    </div>
-                `;
+                tampilkanSuksesLokasi(lat, lng);
                 lokasiSiap = true;
             },
             (error) => {
                 console.warn("Geolocation error:", error);
-                
-                // Deteksi pesan error spesifik
-                let pesanError = "Gagal mendapatkan lokasi.";
-                if(error.code === 1) pesanError = "Izin akses lokasi ditolak oleh Browser atau Windows.";
-                if(error.code === 2) pesanError = "Sinyal GPS/Lokasi tidak tersedia di perangkat ini.";
-                if(error.code === 3) pesanError = "Waktu tunggu habis (Timeout) saat mencari sinyal lokasi.";
 
-                // Ubah UI ke Error
-                statusBox.className = 'location-status loc-error mb-4';
-                locIcon.className = 'bi bi-exclamation-triangle-fill me-2 text-danger fs-5';
-                locIcon.parentElement.className = 'd-flex align-items-center mb-2';
-                locTitle.className = 'text-danger fw-bold';
-                locTitle.innerText = 'Akses Lokasi Gagal';
-                
-                locContent.innerHTML = `
-                    <div class="text-danger lh-sm" style="font-size: 0.8rem;">
-                        ${pesanError}<br><br>
-                        <span class="fw-semibold">Tips PC/Laptop:</span> Pastikan "Location Services" di Settings OS Windows Anda dalam keadaan ON.
-                    </div>
-                `;
+                let judul = 'Akses Lokasi Gagal';
+                let pesanError = "Gagal mendapatkan lokasi.";
+                let tips = '<br><br><span class="fw-semibold">Tips PC/Laptop:</span> Pastikan "Location Services" di Settings OS Windows Anda dalam keadaan ON.';
+
+                if (error.code === 1) {
+                    judul = 'Izin Lokasi Ditolak';
+                    pesanError = 'Browser menolak permintaan lokasi. Kalau menurut Anda izin sudah Allow, cek ikon gembok 🔒 di address bar dan pastikan "Lokasi" berstatus Allow (bukan cuma toggle di Settings HP/Windows), lalu refresh halaman.';
+                    tips = '';
+                }
+                if (error.code === 2) pesanError = "Sinyal GPS/Lokasi tidak tersedia di perangkat ini.";
+                if (error.code === 3) pesanError = "Waktu tunggu habis (Timeout) saat mencari sinyal lokasi. Coba pindah ke tempat dengan sinyal lebih baik atau refresh halaman.";
+
+                tampilkanErrorLokasi(judul, pesanError + tips);
             },
             geoOptions
         );
 
         // Inisialisasi Scanner (Kamera tetap nyala sambil mencari GPS)
         const scanner = new Html5Qrcode("reader");
-        const overlay = document.getElementById('scanner-overlay');
 
         function onScanSuccess(decodedText) {
             if (!lokasiSiap) {
@@ -274,17 +334,37 @@
                     onScanSuccess
                 ).then(() => {
                     overlay.style.display = 'flex';
+                }).catch(err => {
+                    console.warn("Gagal start kamera:", err);
+                    tampilkanErrorKamera(
+                        'Gagal Menyalakan Kamera',
+                        'Kamera terdeteksi tapi gagal dinyalakan. Tutup aplikasi lain yang memakai kamera (Zoom/Meet/tab lain), lalu refresh halaman.'
+                    );
                 });
+            } else {
+                tampilkanErrorKamera(
+                    'Kamera Tidak Ditemukan',
+                    'Perangkat ini tidak memiliki kamera yang terdeteksi oleh browser.'
+                );
             }
         }).catch(err => {
-            document.getElementById('reader').innerHTML = `
-                <div class="d-flex flex-column align-items-center justify-content-center p-4 bg-light border border-warning rounded-4 text-center">
-                    <i class="bi bi-camera-video-off text-warning mb-2" style="font-size: 2.5rem;"></i>
-                    <h6 class="text-dark fw-bold mb-2">Kamera Tidak Tersedia</h6>
-                    <p class="text-muted small mb-0">Harap izinkan akses kamera untuk melakukan absensi.</p>
-                </div>
-            `;
-            overlay.style.display = 'none';
+            console.warn("Gagal ambil daftar kamera:", err);
+            const errName = (err && err.name) ? err.name : '';
+            let judul = 'Kamera Tidak Tersedia';
+            let pesan = 'Harap izinkan akses kamera untuk melakukan absensi.';
+
+            if (errName === 'NotAllowedError') {
+                judul = 'Izin Kamera Ditolak';
+                pesan = 'Browser menolak akses kamera. Klik ikon gembok 🔒 di address bar, ubah izin "Kamera" ke Allow, lalu refresh -- menyalakan kamera di HP/Windows saja tidak cukup kalau izin di level browser masih Block.';
+            } else if (errName === 'NotFoundError') {
+                judul = 'Kamera Tidak Ditemukan';
+                pesan = 'Tidak ada kamera yang terdeteksi di perangkat ini.';
+            } else if (errName === 'NotReadableError') {
+                judul = 'Kamera Sedang Dipakai Aplikasi Lain';
+                pesan = 'Tutup aplikasi/tab lain yang mungkin sedang memakai kamera (Zoom, Google Meet, dll), lalu refresh halaman ini.';
+            }
+
+            tampilkanErrorKamera(judul, pesan);
         });
     });
 </script>
