@@ -40,3 +40,6 @@ Route::get('/hrd/karyawan/{id}/edit', [App\Http\Controllers\KaryawanController::
 Route::get('/hrd/karyawan/{id}/qr', [App\Http\Controllers\KaryawanController::class, 'cetakQr'])->name('karyawan.qr');
 
 Route::put('/hrd/karyawan/{id}', [App\Http\Controllers\KaryawanController::class, 'update'])->name('karyawan.update');
+
+// Tambahkan baris ini di bawah route karyawan.index / karyawan.create Anda
+Route::get('/hrd/karyawan/{id}/detail', [App\Http\Controllers\KaryawanController::class, 'show'])->name('karyawan.show');

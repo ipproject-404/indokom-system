@@ -6,32 +6,28 @@ use Illuminate\Http\Request;
 use App\Models\Karyawan;
 use App\Models\Jabatan;
 use App\Models\Departemen;
-use Illuminate\Support\Str; // <-- 1. TAMBAHKAN INI DI ATAS
+use Illuminate\Support\Str;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 class KaryawanController extends Controller
 {
-    // Menampilkan halaman daftar karyawan
     public function index()
     {
-        // Mengambil semua data karyawan beserta relasi jabatan & departemen
         $karyawans = Karyawan::with(['jabatan', 'departemen'])->orderBy('created_at', 'desc')->get();
         return view('karyawan_index', compact('karyawans'));
     }
 
-    // Menampilkan form tambah karyawan
     public function create()
     {
-        // Mengambil data untuk pilihan dropdown
         $jabatans = Jabatan::all();
         $departemens = Departemen::all();
         
         return view('karyawan_create', compact('jabatans', 'departemens'));
     }
 
-    // Menyimpan data karyawan baru ke database
     public function store(Request $request)
     {
-        // Validasi data yang diinput
         $request->validate([
             'nik_ktp' => 'required|unique:karyawan,nik_ktp',
             'nik_kerja' => 'required|unique:karyawan,nik_kerja',
@@ -46,11 +42,10 @@ class KaryawanController extends Controller
             'tanggal_masuk' => 'required|date',
         ]);
 
-        // Simpan ke database
-        Karyawan::create([
+        $karyawan = Karyawan::create([
             'nik_ktp' => $request->nik_ktp,
             'nik_kerja' => $request->nik_kerja,
-            'barcode_uid' => Str::random(40), // <-- 2. UBAH BAGIAN INI MENJADI 40 TOKEN ACAK
+            'barcode_uid' => Str::random(40),
             'nama_lengkap' => $request->nama_lengkap,
             'tempat_lahir' => $request->tempat_lahir,
             'tanggal_lahir' => $request->tanggal_lahir,
@@ -64,12 +59,37 @@ class KaryawanController extends Controller
             'status' => 'aktif'
         ]);
 
+        // BUAT AKUN USER: Username dari nama, spasi dihilangkan, huruf kecil semua
+        $username_baru = strtolower(str_replace(' ', '', $request->nama_lengkap));
+        
+        // Pengecekan jika ada nama yang persis sama agar tidak error
+        $cek_username = User::where('username', $username_baru)->first();
+        if ($cek_username) {
+            $username_baru = $username_baru . rand(10, 99); // Tambah angka jika nama pasaran
+        }
+
+        $password_mentah = 'passwor123'; // Password default sesuai permintaan
+
+        User::create([
+            'karyawan_id' => $karyawan->id,
+            'username' => $username_baru,
+            'password' => Hash::make($password_mentah),
+            'role' => 'karyawan',
+            'status' => 'aktif'
+        ]);
+
         return redirect()->route('karyawan.index')->with('success', 'Data Karyawan berhasil ditambahkan!');
     }
 
-    // ... kode Anda yang sudah ada di atas (index, create, store) ...
+    // FUNGSI BARU UNTUK HALAMAN DETAIL KARYAWAN
+    public function show($id)
+    {
+        $karyawan = Karyawan::with(['jabatan', 'departemen'])->findOrFail($id);
+        $akun = User::where('karyawan_id', $id)->first(); // Ambil data akun terkait
+        
+        return view('karyawan_show', compact('karyawan', 'akun'));
+    }
 
-    // Menampilkan halaman Edit Karyawan
     public function edit($id)
     {
         $karyawan = Karyawan::findOrFail($id);
@@ -79,15 +99,12 @@ class KaryawanController extends Controller
         return view('karyawan_edit', compact('karyawan', 'jabatans', 'departemens'));
     }
 
-    // Menampilkan/Mencetak QR Code Karyawan
     public function cetakQr($id)
     {
         $karyawan = Karyawan::findOrFail($id);
-        
         return view('karyawan_qr', compact('karyawan'));
     }
 
-    // Menyimpan perubahan data edit karyawan
     public function update(Request $request, $id)
     {
         $karyawan = Karyawan::findOrFail($id);
@@ -103,5 +120,4 @@ class KaryawanController extends Controller
 
         return redirect()->route('karyawan.index')->with('success', 'Data Karyawan berhasil diperbarui!');
     }
-
 }

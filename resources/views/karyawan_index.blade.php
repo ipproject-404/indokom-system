@@ -9,7 +9,6 @@
 </head>
 <body class="bg-gray-50">
 
-    <!-- Navbar Simple -->
     <nav class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
         <div class="flex items-center">
             <a href="{{ route('dashboard.hrd') }}" class="text-blue-600 hover:bg-blue-50 p-2 rounded-lg mr-3">
@@ -26,10 +25,13 @@
 
     <div class="p-6 max-w-6xl mx-auto">
         
-        <!-- Alert Success -->
+        <!-- Alert Success Saja -->
         @if(session('success'))
-        <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg mb-6 flex items-center">
-            <i class="bi bi-check-circle-fill mr-2"></i> {{ session('success') }}
+        <div class="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg mb-6 shadow-sm">
+            <div class="flex items-center text-emerald-700">
+                <i class="bi bi-check-circle-fill mr-2 text-lg"></i> 
+                <span class="font-bold">{{ session('success') }}</span>
+            </div>
         </div>
         @endif
 
@@ -67,8 +69,11 @@
                                     <span class="bg-rose-100 text-rose-700 px-2 py-1 rounded-md text-[11px] font-bold">NONAKTIF</span>
                                 @endif
                             </td>
-                            <!-- BAGIAN AKSI YANG DIPERBARUI -->
-                            <td class="px-5 py-3 text-center">
+                            <!-- AKSI: Ditambah tombol Detail (Ikon Mata) -->
+                            <td class="px-5 py-3 text-center whitespace-nowrap">
+                                <a href="{{ route('karyawan.show', $kry->id) }}" class="text-emerald-600 hover:text-emerald-800 mx-1 inline-block" title="Detail Karyawan">
+                                    <i class="bi bi-eye-fill"></i>
+                                </a>
                                 <a href="{{ route('karyawan.edit', $kry->id) }}" class="text-blue-600 hover:text-blue-800 mx-1 inline-block" title="Edit Data">
                                     <i class="bi bi-pencil-square"></i>
                                 </a>
