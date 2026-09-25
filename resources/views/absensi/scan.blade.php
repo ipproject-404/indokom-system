@@ -125,7 +125,7 @@
             
             <!-- Header -->
             <div class="d-flex align-items-center mb-4">
-                <a href="{{ route('login') }}" class="text-secondary text-decoration-none me-3">
+                <a href="{{ route('dashboard') }}" class="text-secondary text-decoration-none me-3">
                     <i class="bi bi-arrow-left fs-4 bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;"></i>
                 </a>
                 <div>
@@ -172,6 +172,8 @@
                 <input type="hidden" name="token" id="token-input">
                 <input type="hidden" name="latitude" id="latitude-input">
                 <input type="hidden" name="longitude" id="longitude-input">
+                <input type="hidden" name="alamat" id="alamat-input">
+                <input type="hidden" name="nama_jalan" id="nama-jalan-input">
             </form>
 
         </div>
@@ -191,22 +193,157 @@
         const readerBox = document.getElementById('reader');
         const overlay = document.getElementById('scanner-overlay');
 
+        // ==========================================================
+        // KONFIGURASI KANTOR -- sekarang diambil dari config/kantor.php
+        // (dan file .env) di server, BUKAN diketik manual di sini lagi.
+        // Ini supaya nilai yang dipakai untuk tampilan (JS ini) selalu
+        // sama persis dengan nilai yang dipakai untuk validasi jarak
+        // di server (PHP) -- ganti nilainya di .env, bukan di sini.
+        //
+        // Catatan: pengecekan radius di JS ini hanya untuk TAMPILAN
+        // (supaya jelas dibaca karyawan). Perhitungan yang menentukan
+        // apa yang benar-benar tersimpan ke database tetap dihitung
+        // ULANG di server (controller Laravel), karena nilai dari JS
+        // bisa saja dimanipulasi lewat browser.
+        // ==========================================================
+        const KANTOR = {
+            nama: @json(config('kantor.nama')),
+            lat: {{ config('kantor.latitude') }},
+            lng: {{ config('kantor.longitude') }},
+            radius: {{ config('kantor.radius_meter') }}
+        };
+
+        // Menyimpan teks lokasi yang sedang ditampilkan (nama kantor ATAU
+        // hasil reverse-geocoding), supaya bisa ikut dikirim ke server
+        // saat submit -- bukan cuma angka latitude/longitude saja.
+        let alamatTerkini = '';
+
+        // Nama jalan hasil reverse-geocoding SELALU disimpan di sini,
+        // baik posisi di dalam maupun di luar radius kantor -- ini yang
+        // dikirim ke server sebagai field terpisah "nama_jalan", supaya
+        // masuk ke kolom nama_jalan_masuk / nama_jalan_pulang di DB.
+        let namaJalanTerkini = '';
+
+        // Hitung jarak dua koordinat pakai rumus Haversine, hasil dalam meter
+        function hitungJarakMeter(lat1, lng1, lat2, lng2) {
+            const R = 6371000;
+            const toRad = (deg) => deg * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLng = toRad(lng2 - lng1);
+            const a = Math.sin(dLat / 2) ** 2 +
+                      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                      Math.sin(dLng / 2) ** 2;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
         function tampilkanSuksesLokasi(lat, lng) {
             statusBox.className = 'location-status loc-success mb-4';
             locIcon.className = 'bi bi-geo-alt-fill me-2 text-success fs-5';
             locIcon.parentElement.className = 'd-flex align-items-center mb-1';
             locTitle.className = 'text-success fw-bold';
             locTitle.innerText = 'Lokasi Ditemukan';
+
+            const jarak = hitungJarakMeter(lat, lng, KANTOR.lat, KANTOR.lng);
+            const diKantor = jarak <= KANTOR.radius;
+
+            let infoAtas;
+            if (diKantor) {
+                // Dalam radius kantor -- nama kantor langsung dipakai sebagai
+                // "alamat" yang dikirim ke server (tidak berubah, sesuai
+                // kesepakatan sebelumnya). Nama jalan tetap dicari di bawah,
+                // tapi cuma buat tambahan info, bukan menggantikan ini.
+                alamatTerkini = KANTOR.nama;
+                infoAtas = `
+                    <div class="fw-semibold mb-2">
+                        <i class="bi bi-building-check me-1"></i> ${KANTOR.nama}
+                    </div>
+                    <div class="mb-2" style="font-size: 0.75rem;">
+                        <i class="bi bi-check-circle-fill me-1"></i> ${Math.round(jarak)} m dari titik kantor (dalam radius ${KANTOR.radius} m)
+                    </div>
+                `;
+            } else {
+                infoAtas = `
+                    <div class="fw-semibold mb-2">
+                        <i class="bi bi-exclamation-triangle-fill me-1 text-warning"></i> Di luar radius kantor
+                    </div>
+                    <div class="mb-2 text-warning" style="font-size: 0.75rem;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i> ${Math.round(jarak)} m dari kantor (di luar radius ${KANTOR.radius} m)
+                    </div>
+                `;
+            }
+
             locContent.innerHTML = `
                 <div class="text-success" style="font-size: 0.8rem;">
+                    ${infoAtas}
                     <div class="d-flex justify-content-between mb-1">
                         <span>Latitude:</span> <strong>${lat.toFixed(6)}</strong>
                     </div>
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between mb-1">
                         <span>Longitude:</span> <strong>${lng.toFixed(6)}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between border-top pt-2 mt-1">
+                        <span>Nama Jalan:</span>
+                        <strong id="nama-jalan-value" class="text-end ms-2">Mencari...</strong>
                     </div>
                 </div>
             `;
+
+            // Nama jalan SELALU dicari lewat reverse-geocoding, baik di
+            // dalam maupun di luar radius kantor -- beda dengan alamatTerkini
+            // (yang dikirim ke server) yang cuma diisi ulang kalau di luar
+            // radius, sesuai penjelasan di cariNamaLokasi() di bawah.
+            cariNamaLokasi(lat, lng, !diKantor);
+        }
+
+        // ==========================================================
+        // Reverse geocoding: ubah koordinat angka jadi nama jalan/
+        // area yang gampang dibaca, pakai OpenStreetMap Nominatim
+        // (gratis, tanpa API key). Kalau gagal/timeout, koordinat
+        // di atas tetap tampil jadi tidak mengganggu proses absen.
+        //
+        // Parameter jadikanAlamatUtama: kalau true (posisi di luar
+        // radius kantor), hasil pencarian ini JUGA dipakai sebagai
+        // alamatTerkini yang dikirim & disimpan ke server. Kalau false
+        // (posisi di dalam radius), hasil ini HANYA ditampilkan sebagai
+        // info nama jalan tambahan -- alamatTerkini tetap nama kantor.
+        // ==========================================================
+        function cariNamaLokasi(lat, lng, jadikanAlamatUtama) {
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+
+            fetch(url, { headers: { 'Accept-Language': 'id' } })
+                .then(res => res.json())
+                .then(data => {
+                    const el = document.getElementById('nama-jalan-value');
+                    if (!el) return;
+
+                    let namaJalan;
+                    if (data && data.address) {
+                        const a = data.address;
+                        // Prioritaskan nama tempat/gedung/kantor kalau ada datanya
+                        // di OpenStreetMap, baru fallback ke nama jalan + area.
+                        const bagian = [
+                            a.office || a.amenity || a.building || a.shop || null,
+                            a.road || null,
+                            a.village || a.suburb || a.city_district || null,
+                            a.city || a.town || a.county || null
+                        ].filter(Boolean);
+
+                        namaJalan = bagian.join(', ') || 'Nama lokasi tidak ditemukan';
+                    } else {
+                        namaJalan = 'Nama lokasi tidak ditemukan';
+                    }
+
+                    el.innerText = namaJalan;
+                    namaJalanTerkini = namaJalan; // selalu diisi, apapun status radius
+                    if (jadikanAlamatUtama) alamatTerkini = namaJalan;
+                })
+                .catch(() => {
+                    const el = document.getElementById('nama-jalan-value');
+                    if (el) el.innerText = 'Gagal memuat nama jalan';
+                    namaJalanTerkini = 'Gagal memuat nama lokasi'; // selalu diisi
+                    if (jadikanAlamatUtama) alamatTerkini = 'Gagal memuat nama lokasi';
+                });
         }
 
         function tampilkanErrorLokasi(judul, pesan) {
@@ -322,6 +459,8 @@
             }
             scanner.stop().then(() => {
                 document.getElementById('token-input').value = decodedText;
+                document.getElementById('alamat-input').value = alamatTerkini;
+                document.getElementById('nama-jalan-input').value = namaJalanTerkini;
                 document.getElementById('form-scan-absensi').submit();
             });
         }

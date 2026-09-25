@@ -12,8 +12,6 @@ class QrController extends Controller
 {
     /**
      * Halaman scan QR khusus untuk LOGIN saja (tidak mencatat presensi).
-     * Contoh pemakaian: karyawan mau buka dashboard dari rumah untuk
-     * cek jadwal / ajukan cuti, tanpa maksud absen.
      */
     public function showScanLogin()
     {
@@ -48,7 +46,6 @@ class QrController extends Controller
 
     /**
      * Halaman scan QR untuk ABSENSI (login sekaligus mencatat jam masuk/pulang).
-     * Wajib menyertakan lokasi (latitude & longitude) dari browser.
      */
     public function showScanAbsensi()
     {
@@ -61,6 +58,8 @@ class QrController extends Controller
             'token' => ['required', 'string'],
             'latitude' => ['required', 'numeric'],
             'longitude' => ['required', 'numeric'],
+            'alamat' => ['nullable', 'string', 'max:255'],
+            'nama_jalan' => ['nullable', 'string', 'max:255'],
         ]);
 
         $karyawan = Karyawan::where('barcode_uid', $request->token)
@@ -77,10 +76,34 @@ class QrController extends Controller
             return back()->withErrors(['token' => 'Karyawan ini belum punya akun login. Hubungi HR.']);
         }
 
+        // ------------------------------------------------------------
+        // Hitung ulang jarak & status radius DI SERVER (bukan percaya
+        // begitu saja dari JS) -- supaya datanya bisa diandalkan untuk
+        // keperluan verifikasi nanti, karena nilai dari JS/browser bisa
+        // dimanipulasi orang yang paham cara ubah request.
+        // ------------------------------------------------------------
+        $jarakMeter = $this->hitungJarakMeter(
+            (float) $request->latitude,
+            (float) $request->longitude,
+            (float) config('kantor.latitude'),
+            (float) config('kantor.longitude')
+        );
+        $dalamRadius = $jarakMeter <= config('kantor.radius_meter');
+        $statusRadius = $dalamRadius ? 'dalam_radius' : 'luar_radius';
+
+        // Kalau di dalam radius kantor, pakai nama kantor sebagai alamat;
+        // kalau di luar, pakai teks alamat/nama jalan yang dikirim dari
+        // hasil reverse-geocoding di browser (bisa kosong kalau gagal).
+        $alamat = $dalamRadius ? config('kantor.nama') : ($request->alamat ?: 'Alamat tidak diketahui');
+
+        // Nama jalan SELALU diambil dari hasil reverse-geocoding browser,
+        // terlepas dari status radius -- ini kolom terpisah dari $alamat
+        // di atas (yang isinya bisa jadi nama kantor, bukan nama jalan).
+        $namaJalan = $request->nama_jalan ?: null;
+
         $sekarang = Carbon::now();
         $hariIni = $sekarang->toDateString();
 
-        // Cari record presensi hari ini untuk karyawan ini
         $presensi = Presensi::where('karyawan_id', $karyawan->id)
             ->where('tanggal', $hariIni)
             ->first();
@@ -93,6 +116,10 @@ class QrController extends Controller
                 'jam_masuk' => $sekarang->toTimeString(),
                 'latitude_masuk' => $request->latitude,
                 'longitude_masuk' => $request->longitude,
+                'alamat_masuk' => $alamat,
+                'nama_jalan_masuk' => $namaJalan,
+                'jarak_masuk_meter' => round($jarakMeter, 2),
+                'status_radius_masuk' => $statusRadius,
                 'metode_presensi' => 'QR_KARYAWAN',
                 'status_verifikasi' => 'menunggu',
             ]);
@@ -104,11 +131,14 @@ class QrController extends Controller
                 'jam_pulang' => $sekarang->toTimeString(),
                 'latitude_pulang' => $request->latitude,
                 'longitude_pulang' => $request->longitude,
+                'alamat_pulang' => $alamat,
+                'nama_jalan_pulang' => $namaJalan,
+                'jarak_pulang_meter' => round($jarakMeter, 2),
+                'status_radius_pulang' => $statusRadius,
             ]);
 
             $pesan = 'Absen pulang berhasil dicatat pukul ' . $sekarang->format('H:i:s') . '.';
         } else {
-            // Sudah absen masuk & pulang hari ini
             $pesan = 'Kamu sudah tercatat absen masuk dan pulang hari ini.';
         }
 
@@ -116,5 +146,24 @@ class QrController extends Controller
         $request->session()->regenerate();
 
         return redirect()->route('dashboard')->with('pesan_absensi', $pesan);
+    }
+
+    /**
+     * Jarak dua koordinat pakai rumus Haversine, hasil dalam meter.
+     * Sengaja dihitung ulang di server -- lihat catatan di scanAbsensi().
+     */
+    private function hitungJarakMeter(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $r = 6371000; // radius bumi, meter
+        $toRad = fn ($deg) => $deg * M_PI / 180;
+
+        $dLat = $toRad($lat2 - $lat1);
+        $dLng = $toRad($lng2 - $lng1);
+
+        $a = sin($dLat / 2) ** 2
+            + cos($toRad($lat1)) * cos($toRad($lat2)) * sin($dLng / 2) ** 2;
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $r * $c;
     }
 }
