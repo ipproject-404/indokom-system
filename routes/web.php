@@ -69,3 +69,4 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::put('/hrd/departemen/{id}', [JabatanDepartemenController::class, 'updateDepartemen'])->name('departemen.update');
     Route::put('/hrd/jabatan/{id}', [JabatanDepartemenController::class, 'updateJabatan'])->name('jabatan.update');
 });
+
