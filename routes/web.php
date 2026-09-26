@@ -6,6 +6,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardHrdController;
 use App\Http\Controllers\KaryawanController;
 use App\Http\Controllers\JabatanDepartemenController;
+use App\Http\Controllers\ProfilController;
+use App\Http\Controllers\RekapAbsensiController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -30,6 +32,8 @@ Route::post('/absensi/scan', [QrController::class, 'scanAbsensi'])->name('absens
 //     lewat ketik URL manual) ---
 Route::middleware(['auth', 'role:karyawan'])->group(function () {
     Route::get('/dashboard-karyawan', [DashboardController::class, 'index'])->name('dashboard.karyawan');
+    Route::get('/profil-karyawan', [ProfilController::class, 'index'])->name('profil.karyawan');
+    Route::get('/absensi-karyawan', [RekapAbsensiController::class, 'index'])->name('absensi.karyawan');
 });
 
 Route::middleware(['auth', 'role:hrd'])->group(function () {
@@ -52,6 +56,11 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::put('/hrd/karyawan/{id}', [KaryawanController::class, 'update'])->name('karyawan.update');
     Route::get('/hrd/karyawan/{id}/detail', [KaryawanController::class, 'show'])->name('karyawan.show');
 
+    Route::get('/get-jabatan/{departemen_id}', [KaryawanController::class, 'getJabatan']);
+    
+    Route::get('/hrd/manajemen-qr', [App\Http\Controllers\KaryawanController::class, 'qrIndex'])->name('karyawan.qr.index');
+    
+    Route::get('/hrd/karyawan/cetak-qr-massal', [KaryawanController::class, 'cetakQrMassal'])->name('karyawan.qr.massal');
     Route::get('/hrd/jabatan-departemen', [JabatanDepartemenController::class, 'index'])->name('jabatan.departemen.index');
     Route::post('/hrd/departemen/store', [JabatanDepartemenController::class, 'storeDepartemen'])->name('departemen.store');
     Route::delete('/hrd/departemen/{id}', [JabatanDepartemenController::class, 'destroyDepartemen'])->name('departemen.destroy');
