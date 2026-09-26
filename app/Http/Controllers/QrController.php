@@ -157,7 +157,7 @@ class QrController extends Controller
                 'jarak_masuk_meter' => round($jarakMeter, 2),
                 'status_radius_masuk' => $statusRadius,
                 'metode_presensi' => 'QR_KARYAWAN',
-                'status_verifikasi' => 'menunggu',
+                'status_verifikasi' => 'disetujui',
             ]);
 
             $pesan = 'Absen masuk berhasil dicatat pukul ' . $sekarang->format('H:i:s') . '.';

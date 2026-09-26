@@ -244,14 +244,9 @@
         <div class="row text-center gx-0">
             <div class="col"><a href="{{ route('dashboard.karyawan') }}" class="active"><i class="bi bi-house-fill"></i> Beranda</a></div>
             <div class="col"><a href="#"><i class="bi bi-check2-square"></i> Aktivitas</a></div>
-            <div class="col"><a href="#"><i class="bi bi-journal-text"></i> Tugas</a></div>
+            <div class="col"><a href="{{ route('absensi.karyawan') }}"><i class="bi bi-calendar-check"></i> Absensi</a></div>
             <div class="col"><a href="#"><i class="bi bi-mortarboard"></i> Pelatihan</a></div>
-            <div class="col">
-                <form method="POST" action="{{ route('logout') }}" class="m-0 p-0">
-                    @csrf
-                    <button type="submit" class="w-100"><i class="bi bi-person-circle text-secondary"></i> Profil</button>
-                </form>
-            </div>
+            <div class="col"><a href="{{ route('profil.karyawan') }}"><i class="bi bi-person-circle"></i> Profil</a></div>
         </div>
     </nav>
 </div>
@@ -463,7 +458,7 @@
 
         <div class="nav-section-title">Aktivitas Saya</div>
         <a href="#"><i class="bi bi-check2-square"></i> Aktivitas</a>
-        <a href="#"><i class="bi bi-journal-text"></i> Tugas</a>
+        <a href="{{ route('absensi.karyawan') }}"><i class="bi bi-calendar-check"></i> Absensi</a>
         <a href="#"><i class="bi bi-mortarboard"></i> Pelatihan</a>
 
         <div class="nav-section-title">Menu Aplikasi</div>
@@ -477,11 +472,13 @@
         @endforeach
 
         <div class="sidebar-profile">
-            <div class="avatar"><i class="bi bi-person-fill"></i></div>
-            <div>
-                <div class="nama">{{ $namaTampil }}</div>
-                <div class="peran">{{ $jabatanTampil }}</div>
-            </div>
+            <a href="{{ route('profil.karyawan') }}" class="sidebar-profile">
+    <div class="avatar"><i class="bi bi-person-fill"></i></div>
+    <div>
+        <div class="nama">{{ $namaTampil }}</div>
+        <div class="peran">{{ $jabatanTampil }}</div>
+    </div>
+</a>
         </div>
         <form method="POST" action="{{ route('logout') }}" class="m-0 p-0">
             @csrf
