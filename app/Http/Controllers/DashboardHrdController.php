@@ -67,7 +67,7 @@ class DashboardHrdController extends Controller
         }
 
         // Mengirim semua data di atas ke file blade HTML
-        return view('dashboard_hrd', compact(
+        return view('dashboard.hrd', compact(
             'totalKaryawanAktif', 
             'hadirHariIni', 
             'lemburMenunggu', 

@@ -125,7 +125,7 @@
             
             <!-- Header -->
             <div class="d-flex align-items-center mb-4">
-                <a href="{{ route('dashboard') }}" class="text-secondary text-decoration-none me-3">
+                <a href="{{ $urlKembali }}" class="text-secondary text-decoration-none me-3">
                     <i class="bi bi-arrow-left fs-4 bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;"></i>
                 </a>
                 <div>

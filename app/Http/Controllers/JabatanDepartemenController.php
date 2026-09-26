@@ -13,7 +13,7 @@ class JabatanDepartemenController extends Controller
         $departemens = Departemen::orderBy('created_at', 'desc')->get();
         $jabatans = Jabatan::with('departemen')->orderBy('created_at', 'desc')->get();
         
-        return view('jabatan_departemen_index', compact('departemens', 'jabatans'));
+        return view('jabatan-departemen.index', compact('departemens', 'jabatans'));
     }
 
     public function storeDepartemen(Request $request)

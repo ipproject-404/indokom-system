@@ -3,7 +3,9 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\QrController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\DashboardHrdController; // <-- TAMBAHAN: Import Controller HRD
+use App\Http\Controllers\DashboardHrdController;
+use App\Http\Controllers\KaryawanController;
+use App\Http\Controllers\JabatanDepartemenController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -23,36 +25,38 @@ Route::post('/login/qr', [QrController::class, 'scanLogin'])->name('login.qr.sub
 Route::get('/absensi/scan', [QrController::class, 'showScanAbsensi'])->name('absensi.scan');
 Route::post('/absensi/scan', [QrController::class, 'scanAbsensi'])->name('absensi.scan.submit');
 
-// --- Dashboard karyawan (wajib login) ---
-Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    
-    // --- Dashboard HRD ---
-    Route::get('/dashboard-hrd', [DashboardHrdController::class, 'index'])->name('dashboard.hrd'); // <-- TAMBAHAN: Route untuk HRD
+// --- Dashboard (wajib login DAN role harus sesuai -- setiap role hanya
+//     bisa akses dashboard miliknya sendiri, tidak bisa saling intip
+//     lewat ketik URL manual) ---
+Route::middleware(['auth', 'role:karyawan'])->group(function () {
+    Route::get('/dashboard-karyawan', [DashboardController::class, 'index'])->name('dashboard.karyawan');
 });
 
-// <-- TAMBAHKAN KODE INI DI BAWAH ROUTE DASHBOARD HRD -->
-Route::get('/hrd/karyawan', [App\Http\Controllers\KaryawanController::class, 'index'])->name('karyawan.index');
-Route::get('/hrd/karyawan/create', [App\Http\Controllers\KaryawanController::class, 'create'])->name('karyawan.create');
-Route::post('/hrd/karyawan', [App\Http\Controllers\KaryawanController::class, 'store'])->name('karyawan.store');
+Route::middleware(['auth', 'role:hrd'])->group(function () {
+    Route::get('/dashboard-hrd', [DashboardHrdController::class, 'index'])->name('dashboard.hrd');
+});
 
-Route::get('/hrd/karyawan/{id}/edit', [App\Http\Controllers\KaryawanController::class, 'edit'])->name('karyawan.edit');
-Route::get('/hrd/karyawan/{id}/qr', [App\Http\Controllers\KaryawanController::class, 'cetakQr'])->name('karyawan.qr');
+// ------------------------------------------------------------------
+// Halaman khusus HRD (kelola karyawan, jabatan, departemen).
+// SEBELUMNYA route-route ini tidak dijaga middleware apapun -- siapa
+// saja (termasuk yang belum login) bisa akses langsung lewat URL,
+// termasuk aksi create/update/delete. Sekarang wajib login DAN
+// role-nya 'hrd' (lihat App\Http\Middleware\EnsureRoleIs).
+// ------------------------------------------------------------------
+Route::middleware(['auth', 'role:hrd'])->group(function () {
+    Route::get('/hrd/karyawan', [KaryawanController::class, 'index'])->name('karyawan.index');
+    Route::get('/hrd/karyawan/create', [KaryawanController::class, 'create'])->name('karyawan.create');
+    Route::post('/hrd/karyawan', [KaryawanController::class, 'store'])->name('karyawan.store');
+    Route::get('/hrd/karyawan/{id}/edit', [KaryawanController::class, 'edit'])->name('karyawan.edit');
+    Route::get('/hrd/karyawan/{id}/qr', [KaryawanController::class, 'cetakQr'])->name('karyawan.qr');
+    Route::put('/hrd/karyawan/{id}', [KaryawanController::class, 'update'])->name('karyawan.update');
+    Route::get('/hrd/karyawan/{id}/detail', [KaryawanController::class, 'show'])->name('karyawan.show');
 
-Route::put('/hrd/karyawan/{id}', [App\Http\Controllers\KaryawanController::class, 'update'])->name('karyawan.update');
-
-// Tambahkan baris ini di bawah route karyawan.index / karyawan.create Anda
-Route::get('/hrd/karyawan/{id}/detail', [App\Http\Controllers\KaryawanController::class, 'show'])->name('karyawan.show');
-
-use App\Http\Controllers\JabatanDepartemenController;
-
-// Rute Kelola Jabatan & Departemen (HRD)
-Route::get('/hrd/jabatan-departemen', [JabatanDepartemenController::class, 'index'])->name('jabatan.departemen.index');
-Route::post('/hrd/departemen/store', [JabatanDepartemenController::class, 'storeDepartemen'])->name('departemen.store');
-Route::delete('/hrd/departemen/{id}', [JabatanDepartemenController::class, 'destroyDepartemen'])->name('departemen.destroy');
-
-Route::post('/hrd/jabatan/store', [JabatanDepartemenController::class, 'storeJabatan'])->name('jabatan.store');
-Route::delete('/hrd/jabatan/{id}', [JabatanDepartemenController::class, 'destroyJabatan'])->name('jabatan.destroy');
-
-Route::put('/hrd/departemen/{id}', [JabatanDepartemenController::class, 'updateDepartemen'])->name('departemen.update');
-Route::put('/hrd/jabatan/{id}', [JabatanDepartemenController::class, 'updateJabatan'])->name('jabatan.update');
+    Route::get('/hrd/jabatan-departemen', [JabatanDepartemenController::class, 'index'])->name('jabatan.departemen.index');
+    Route::post('/hrd/departemen/store', [JabatanDepartemenController::class, 'storeDepartemen'])->name('departemen.store');
+    Route::delete('/hrd/departemen/{id}', [JabatanDepartemenController::class, 'destroyDepartemen'])->name('departemen.destroy');
+    Route::post('/hrd/jabatan/store', [JabatanDepartemenController::class, 'storeJabatan'])->name('jabatan.store');
+    Route::delete('/hrd/jabatan/{id}', [JabatanDepartemenController::class, 'destroyJabatan'])->name('jabatan.destroy');
+    Route::put('/hrd/departemen/{id}', [JabatanDepartemenController::class, 'updateDepartemen'])->name('departemen.update');
+    Route::put('/hrd/jabatan/{id}', [JabatanDepartemenController::class, 'updateJabatan'])->name('jabatan.update');
+});

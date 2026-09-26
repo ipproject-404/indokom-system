@@ -46,10 +46,16 @@ class QrController extends Controller
             ]);
         }
 
-        Auth::login($user);
+        // remember=true -> Laravel menyimpan cookie "remember_token" yang
+        // bertahan lama (default ~5 tahun), jadi user tidak perlu login
+        // ulang tiap kali menutup & membuka lagi browser/app.
+        // remember=true -> Laravel menyimpan cookie "remember_token" yang
+        // bertahan lama (default ~5 tahun), jadi user tidak perlu login
+        // ulang tiap kali menutup & membuka lagi browser/app.
+        Auth::login($user, true);
         $request->session()->regenerate();
 
-        return redirect()->route('dashboard');
+        return redirect()->route($user->routeDashboard());
     }
 
     /**
@@ -57,7 +63,16 @@ class QrController extends Controller
      */
     public function showScanAbsensi()
     {
-        return view('absensi.scan');
+        $user = Auth::user();
+
+        // Tombol "kembali" di halaman ini harus tahu mau kemana -- kalau
+        // sudah login, ke dashboard sesuai role-nya (bukan selalu dashboard
+        // karyawan); kalau belum login sama sekali, ke halaman login biasa.
+        $urlKembali = $user
+            ? route($user->routeDashboard())
+            : route('login');
+
+        return view('absensi.scan', ['urlKembali' => $urlKembali]);
     }
 
     public function scanAbsensi(Request $request)
@@ -172,10 +187,10 @@ class QrController extends Controller
             $pesan = 'Kamu sudah tercatat absen masuk dan pulang hari ini.';
         }
 
-        Auth::login($user);
+        Auth::login($user, true);
         $request->session()->regenerate();
 
-        return redirect()->route('dashboard')->with('pesan_absensi', $pesan);
+        return redirect()->route($user->routeDashboard())->with('pesan_absensi', $pesan);
     }
 
     /**

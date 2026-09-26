@@ -242,7 +242,7 @@
 
     <nav class="bottom-nav">
         <div class="row text-center gx-0">
-            <div class="col"><a href="{{ route('dashboard') }}" class="active"><i class="bi bi-house-fill"></i> Beranda</a></div>
+            <div class="col"><a href="{{ route('dashboard.karyawan') }}" class="active"><i class="bi bi-house-fill"></i> Beranda</a></div>
             <div class="col"><a href="#"><i class="bi bi-check2-square"></i> Aktivitas</a></div>
             <div class="col"><a href="#"><i class="bi bi-journal-text"></i> Tugas</a></div>
             <div class="col"><a href="#"><i class="bi bi-mortarboard"></i> Pelatihan</a></div>
@@ -459,7 +459,7 @@
         </div>
 
         <div class="nav-section-title">Menu Utama</div>
-        <a href="{{ route('dashboard') }}" class="active"><i class="bi bi-house-fill"></i> Dashboard</a>
+        <a href="{{ route('dashboard.karyawan') }}" class="active"><i class="bi bi-house-fill"></i> Dashboard</a>
 
         <div class="nav-section-title">Aktivitas Saya</div>
         <a href="#"><i class="bi bi-check2-square"></i> Aktivitas</a>

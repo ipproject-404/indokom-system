@@ -21,7 +21,7 @@ class DashboardController extends Controller
                 ->first();
         }
 
-        return view('dashboard', [
+        return view('dashboard.karyawan', [
             'user' => $user,
             'karyawan' => $karyawan,
             'presensiHariIni' => $presensiHariIni,

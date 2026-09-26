@@ -93,7 +93,7 @@ class KaryawanController extends Controller
         $departemens = Departemen::all();
         $jabatans = Jabatan::all();
 
-        return view('karyawan_index', compact('karyawans', 'departemens', 'jabatans'));
+        return view('karyawan.index', compact('karyawans', 'departemens', 'jabatans'));
     }
 
     public function create()
@@ -101,7 +101,7 @@ class KaryawanController extends Controller
         $jabatans = Jabatan::all();
         $departemens = Departemen::all();
         
-        return view('karyawan_create', compact('jabatans', 'departemens'));
+        return view('karyawan.create', compact('jabatans', 'departemens'));
     }
 
     public function store(Request $request)
@@ -177,7 +177,7 @@ class KaryawanController extends Controller
                                     ->take(10)
                                     ->get();
         
-        return view('karyawan_show', compact('karyawan', 'akun', 'riwayat_presensi'));
+        return view('karyawan.show', compact('karyawan', 'akun', 'riwayat_presensi'));
     }
 
     public function edit($id)
@@ -186,13 +186,13 @@ class KaryawanController extends Controller
         $jabatans = Jabatan::all();
         $departemens = Departemen::all();
         
-        return view('karyawan_edit', compact('karyawan', 'jabatans', 'departemens'));
+        return view('karyawan.edit', compact('karyawan', 'jabatans', 'departemens'));
     }
 
     public function cetakQr($id)
     {
         $karyawan = Karyawan::findOrFail($id);
-        return view('karyawan_qr', compact('karyawan'));
+        return view('karyawan.qr', compact('karyawan'));
     }
 
     public function update(Request $request, $id)
