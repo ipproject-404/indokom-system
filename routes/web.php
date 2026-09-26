@@ -51,6 +51,9 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::get('/hrd/karyawan/{id}/qr', [KaryawanController::class, 'cetakQr'])->name('karyawan.qr');
     Route::put('/hrd/karyawan/{id}', [KaryawanController::class, 'update'])->name('karyawan.update');
     Route::get('/hrd/karyawan/{id}/detail', [KaryawanController::class, 'show'])->name('karyawan.show');
+    Route::get('/get-jabatan/{departemen_id}', [KaryawanController::class, 'getJabatan']);
+    Route::get('/hrd/manajemen-qr', [App\Http\Controllers\KaryawanController::class, 'qrIndex'])->name('karyawan.qr.index');
+    Route::get('/hrd/karyawan/cetak-qr-massal', [KaryawanController::class, 'cetakQrMassal'])->name('karyawan.qr.massal');
 
     Route::get('/hrd/jabatan-departemen', [JabatanDepartemenController::class, 'index'])->name('jabatan.departemen.index');
     Route::post('/hrd/departemen/store', [JabatanDepartemenController::class, 'storeDepartemen'])->name('departemen.store');
@@ -61,8 +64,3 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::put('/hrd/jabatan/{id}', [JabatanDepartemenController::class, 'updateJabatan'])->name('jabatan.update');
 });
 
-Route::get('/get-jabatan/{departemen_id}', [KaryawanController::class, 'getJabatan']);
-
-Route::get('/hrd/manajemen-qr', [App\Http\Controllers\KaryawanController::class, 'qrIndex'])->name('karyawan.qr.index');
-
-Route::get('/hrd/karyawan/cetak-qr-massal', [KaryawanController::class, 'cetakQrMassal'])->name('karyawan.qr.massal');
