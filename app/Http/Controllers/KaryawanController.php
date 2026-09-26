@@ -210,4 +210,37 @@ class KaryawanController extends Controller
 
         return redirect()->route('karyawan.index')->with('success', 'Data Karyawan berhasil diperbarui!');
     }
+
+    // Tambahkan method ini di dalam class Controller
+    public function getJabatan($departemen_id)
+    {
+        // Mengambil data jabatan berdasarkan departemen_id, mengacu pada struktur database Tuan Muda
+        $jabatans = Jabatan::where('departemen_id', $departemen_id)->get();
+        
+        return response()->json($jabatans);
+    }
+    
+    public function qrIndex()
+    {
+        // Mengambil data karyawan yang aktif untuk ditampilkan di halaman QR
+        // (Asumsi model relasinya bernama 'departemen' dan 'jabatan')
+        $karyawans = \App\Models\Karyawan::with(['departemen', 'jabatan'])->get();
+        
+        // Arahkan ke file view manajemen_qr.blade.php
+        return view('karyawan.manajemen_qr', compact('karyawans'));
+    }
+
+    public function cetakQrMassal(\Illuminate\Http\Request $request)
+    {
+        // Mengambil parameter ID yang dikirimkan melalui URL (contoh: ?ids=1,2,3)
+        $ids = explode(',', $request->query('ids'));
+
+        // Ambil data karyawan berdasarkan ID yang dipilih beserta relasinya
+        $karyawans = \App\Models\Karyawan::with(['departemen', 'jabatan'])
+                        ->whereIn('id', $ids)
+                        ->get();
+
+        // Tampilkan ke view khusus cetak massal
+        return view('karyawan.qr_massal', compact('karyawans'));
+    }
 }

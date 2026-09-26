@@ -60,3 +60,9 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::put('/hrd/departemen/{id}', [JabatanDepartemenController::class, 'updateDepartemen'])->name('departemen.update');
     Route::put('/hrd/jabatan/{id}', [JabatanDepartemenController::class, 'updateJabatan'])->name('jabatan.update');
 });
+
+Route::get('/get-jabatan/{departemen_id}', [KaryawanController::class, 'getJabatan']);
+
+Route::get('/hrd/manajemen-qr', [App\Http\Controllers\KaryawanController::class, 'qrIndex'])->name('karyawan.qr.index');
+
+Route::get('/hrd/karyawan/cetak-qr-massal', [KaryawanController::class, 'cetakQrMassal'])->name('karyawan.qr.massal');
