@@ -90,7 +90,6 @@
                         <input type="text" name="no_hp" value="{{ old('no_hp') }}" onkeypress="return hanyaAngka(event)" placeholder="Contoh: 08123456789" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none" required>
                     </div>
                     
-                    <!-- PENDIDIKAN (DROPDOWN & NAMA SEKOLAH) -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Pendidikan Terakhir & Institusi</label>
                         <div class="grid grid-cols-2 gap-2">
@@ -112,7 +111,8 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-gray-100 pt-4 mt-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Departemen</label>
-                        <select name="departemen_id" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white" required>
+                        <!-- Dropdown Departemen dengan ID untuk trigger AJAX -->
+                        <select name="departemen_id" id="departemen_id" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white" required>
                             <option value="">Pilih Departemen...</option>
                             @foreach($departemens as $dept)
                                 <option value="{{ $dept->id }}">{{ $dept->nama_departemen }}</option>
@@ -121,11 +121,9 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
-                        <select name="jabatan_id" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white" required>
+                        <!-- Dropdown Jabatan kosong, diisi otomatis lewat Javascript -->
+                        <select name="jabatan_id" id="jabatan_id" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white" required>
                             <option value="">Pilih Jabatan...</option>
-                            @foreach($jabatans as $jab)
-                                <option value="{{ $jab->id }}">{{ $jab->nama_jabatan }}</option>
-                            @endforeach
                         </select>
                     </div>
                     <div>
@@ -142,5 +140,32 @@
             </form>
         </div>
     </div>
+
+    <!-- Script AJAX untuk Dependent Dropdown Laravel -->
+    <script>
+        document.getElementById('departemen_id').addEventListener('change', function() {
+            let departemenId = this.value;
+            let jabatanSelect = document.getElementById('jabatan_id');
+            
+            // Kosongkan opsi sebelumnya setiap kali departemen diubah
+            jabatanSelect.innerHTML = '<option value="">Pilih Jabatan...</option>';
+
+            if (departemenId) {
+                // Panggil route Laravel
+                fetch('/get-jabatan/' + departemenId)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Tambahkan data JSON ke dalam elemen select
+                        data.forEach(jabatan => {
+                            let option = document.createElement('option');
+                            option.value = jabatan.id;
+                            option.textContent = jabatan.nama_jabatan;
+                            jabatanSelect.appendChild(option);
+                        });
+                    })
+                    .catch(error => console.error('Error fetching data:', error));
+            }
+        });
+    </script>
 </body>
 </html>
