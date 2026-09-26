@@ -62,7 +62,7 @@
             </a>
 
             <div class="uppercase text-gray-400 text-xs font-bold mb-3 mt-6">Kehadiran & QR</div>
-            <!-- LINK MANAJEMEN QR SUDAH DIARAHKAN KE HALAMAN UMUM -->
+            <!-- LINK MANAJEMEN QR -->
             <a href="{{ route('karyawan.qr.index') }}" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
                 <i class="bi bi-qr-code-scan mr-3"></i>
                 <span class="text-sm font-medium">Manajemen QR Code</span>
@@ -221,6 +221,7 @@
                                             <div class="text-xs font-medium text-gray-800"><span class="text-emerald-600 font-bold mr-1">Masuk:</span> {{ \Carbon\Carbon::parse($prs->jam_masuk)->format('H:i') }} WIB</div>
                                             <div class="text-xs font-medium text-gray-400 mt-0.5"><span class="text-rose-400 font-bold mr-1">Pulang:</span> {{ $prs->jam_pulang ? \Carbon\Carbon::parse($prs->jam_pulang)->format('H:i') . ' WIB' : '-' }}</div>
                                         </td>
+                                        <!-- KOLOM TITIK LOKASI DENGAN RADIUS AWAL ANDA -->
                                         <td class="px-5 py-3">
                                             <div class="text-xs space-y-1.5">
                                                 <!-- Masuk (In) -->
@@ -234,10 +235,23 @@
                                                                 {{ $prs->alamat_masuk ?? ($prs->nama_jalan_masuk ?? $prs->latitude_masuk.', '.$prs->longitude_masuk) }}
                                                             @endif
                                                         </a>
+                                                        @if($prs->jarak_masuk_meter)
+                                                            <span class="text-gray-500">({{ $prs->jarak_masuk_meter }} m)</span>
+                                                        @endif
+                                                        
+                                                        @if($prs->status_radius_masuk == 'dalam_radius')
+                                                            <span class="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">Dalam Radius</span>
+                                                        @elseif($prs->status_radius_masuk)
+                                                            <span class="bg-rose-100 text-rose-700 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">Luar Radius</span>
+                                                        @else
+                                                            <!-- Fallback jika nilai kosong -->
+                                                            <span class="bg-gray-100 text-gray-500 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">Tidak Terdeteksi</span>
+                                                        @endif
                                                     @else
                                                         <span class="text-gray-400 italic">Tidak ada lokasi</span>
                                                     @endif
                                                 </div>
+
                                                 <!-- Pulang (Out) -->
                                                 <div>
                                                     <span class="font-semibold text-rose-500">Out:</span> 
@@ -249,6 +263,18 @@
                                                                 {{ $prs->alamat_pulang ?? ($prs->nama_jalan_pulang ?? $prs->latitude_pulang.', '.$prs->longitude_pulang) }}
                                                             @endif
                                                         </a>
+                                                        @if(isset($prs->jarak_pulang_meter) && $prs->jarak_pulang_meter)
+                                                            <span class="text-gray-500">({{ $prs->jarak_pulang_meter }} m)</span>
+                                                        @endif
+
+                                                        @if(isset($prs->status_radius_pulang) && $prs->status_radius_pulang == 'dalam_radius')
+                                                            <span class="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">Dalam Radius</span>
+                                                        @elseif(isset($prs->status_radius_pulang) && $prs->status_radius_pulang)
+                                                            <span class="bg-rose-100 text-rose-700 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">Luar Radius</span>
+                                                        @else
+                                                            <!-- Fallback jika nilai kosong -->
+                                                            <span class="bg-gray-100 text-gray-500 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">Tidak Terdeteksi</span>
+                                                        @endif
                                                     @else
                                                         <span class="text-gray-400 italic">Belum absen pulang</span>
                                                     @endif
