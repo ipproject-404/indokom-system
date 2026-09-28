@@ -67,7 +67,7 @@
                 <i class="bi bi-qr-code-scan mr-3"></i>
                 <span class="text-sm font-medium">Manajemen QR Code</span>
             </a>
-            <a href="#" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
+            <a href="{{ route('kehadiran.log') }}" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
                 <i class="bi bi-calendar-check mr-3"></i>
                 <span class="text-sm font-medium">Log Kehadiran Harian</span>
             </a>

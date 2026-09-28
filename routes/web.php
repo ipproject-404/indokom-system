@@ -50,16 +50,17 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
 Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::get('/hrd/karyawan', [KaryawanController::class, 'index'])->name('karyawan.index');
     Route::get('/hrd/karyawan/create', [KaryawanController::class, 'create'])->name('karyawan.create');
-    Route::post('/hrd/karyawan', [KaryawanController::class, 'store'])->name('karyawan.store');
     Route::get('/hrd/karyawan/{id}/edit', [KaryawanController::class, 'edit'])->name('karyawan.edit');
     Route::get('/hrd/karyawan/{id}/qr', [KaryawanController::class, 'cetakQr'])->name('karyawan.qr');
-    Route::put('/hrd/karyawan/{id}', [KaryawanController::class, 'update'])->name('karyawan.update');
     Route::get('/hrd/karyawan/{id}/detail', [KaryawanController::class, 'show'])->name('karyawan.show');
     Route::get('/get-jabatan/{departemen_id}', [KaryawanController::class, 'getJabatan']);
     Route::get('/hrd/manajemen-qr', [App\Http\Controllers\KaryawanController::class, 'qrIndex'])->name('karyawan.qr.index');
     Route::get('/hrd/karyawan/cetak-qr-massal', [KaryawanController::class, 'cetakQrMassal'])->name('karyawan.qr.massal');
-
+    Route::get('/hrd/absensi/log-kehadiran', [App\Http\Controllers\PresensiController::class, 'logHarian'])->name('kehadiran.log');
     Route::get('/hrd/jabatan-departemen', [JabatanDepartemenController::class, 'index'])->name('jabatan.departemen.index');
+    
+    Route::put('/hrd/karyawan/{id}', [KaryawanController::class, 'update'])->name('karyawan.update');
+    Route::post('/hrd/karyawan', [KaryawanController::class, 'store'])->name('karyawan.store');
     Route::post('/hrd/departemen/store', [JabatanDepartemenController::class, 'storeDepartemen'])->name('departemen.store');
     Route::delete('/hrd/departemen/{id}', [JabatanDepartemenController::class, 'destroyDepartemen'])->name('departemen.destroy');
     Route::post('/hrd/jabatan/store', [JabatanDepartemenController::class, 'storeJabatan'])->name('jabatan.store');
