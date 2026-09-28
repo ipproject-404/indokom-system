@@ -71,7 +71,7 @@
         background: #ffffff;
         min-height: 100vh;
         box-shadow: none;
-        padding: 10px 10px 90px 10px;
+        padding:0 10px 90px 10px;
         position: relative;
     }
     .mobile-shell .app-header {
@@ -728,7 +728,7 @@
 </div>
 
 @push('scripts')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="/js/qrcode.min.js"></script>
 <script>
     (function () {
         // Thumbnail di kartu sengaja memakai QR "palsu" yang di-blur, supaya
@@ -741,6 +741,15 @@
         var modalEl = document.getElementById('qrModal');
         if (!modalEl) return;
         var timer;
+
+        if (typeof QRCode === 'undefined') {
+            console.error('qrcode.min.js gagal dimuat. Cek file public/js/qrcode.min.js dan tab Network (F12).');
+            modalEl.addEventListener('shown.bs.modal', function () {
+                document.getElementById('qr-real').innerHTML =
+                    '<div class="text-danger" style="font-size:.8rem; max-width:220px;">QR gagal dimuat. Hubungi admin (file qrcode.min.js tidak ditemukan).</div>';
+            });
+            return;
+        }
 
         // QR asli (isi = barcode_uid, sama dengan yang dicetak HRD) baru
         // digambar saat modal dibuka, dan dihapus lagi saat ditutup.

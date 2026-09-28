@@ -6,6 +6,9 @@
     <title>Cetak QR Code Massal - HRD</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Gambar QR dari qrcodejs berupa <img>/<canvas> di dalam .qr-box */
+        .qr-box img, .qr-box canvas { display: block; width: 144px; height: 144px; }
+
         @media print {
             body {
                 background: white !important;
@@ -40,13 +43,14 @@
             <div class="text-xs font-bold tracking-wider text-blue-600 uppercase mb-1">ID CARD KARYAWAN</div>
             <div class="text-[10px] text-gray-400 mb-4">PT. Indokom Sistem</div>
 
-            <!-- Bagian QR Code (Menggunakan API pihak ketiga atau library qrcode Anda, sesuaikan dengan file qr.blade.php Anda) -->
+            <!-- QR dibuat langsung di browser dari barcode_uid (sama dengan qr.blade.php),
+                 tidak ada data yang dikirim ke layanan luar -->
             <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 mb-4">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $karyawan->barcode_uid }}" alt="QR Code" class="w-36 h-36 object-contain">
+                <div class="qr-box" data-token="{{ $karyawan->barcode_uid }}"></div>
             </div>
 
             <h2 class="font-bold text-gray-900 text-lg mb-0.5">{{ $karyawan->nama_lengkap }}</h2>
-            <p class="text-xs text-gray-500 mb-3">{{ $karyawan->barcode_uid }}</p>
+            <p class="text-xs text-gray-500 mb-3">{{ $karyawan->nik_kerja }}</p>
 
             <div class="w-full bg-blue-50/50 rounded-xl p-2.5 border border-blue-50">
                 <div class="text-xs font-semibold text-blue-900">{{ $karyawan->jabatan->nama_jabatan ?? '-' }}</div>
@@ -56,5 +60,19 @@
         @endforeach
     </div>
 
+    <script src="/js/qrcode.min.js"></script>
+    <script>
+        document.querySelectorAll('.qr-box').forEach(function (box) {
+            if (!box.dataset.token) return;
+            new QRCode(box, {
+                text: box.dataset.token,
+                width: 144,
+                height: 144,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        });
+    </script>
 </body>
 </html>
