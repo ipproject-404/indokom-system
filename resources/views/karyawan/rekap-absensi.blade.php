@@ -7,6 +7,7 @@
 @php
     $statusInfo = [
         'hadir' => ['icon' => 'bi-check-circle-fill', 'warna' => '#16a34a', 'label' => 'Hadir'],
+        'terlambat' => ['icon' => 'bi-clock-fill', 'warna' => '#f59e0b', 'label' => 'Hadir (Terlambat)'],
         'tidak_hadir' => ['icon' => 'bi-record-circle', 'warna' => '#ef4444', 'label' => 'Tidak Hadir'],
         'belum_diisi' => ['icon' => 'bi-circle', 'warna' => '#cbd5e1', 'label' => 'Belum Diisi'],
         'libur' => ['icon' => 'bi-square-fill', 'warna' => '#94a3b8', 'label' => 'Hari Libur'],
@@ -33,6 +34,12 @@
         // Di dalam radius kantor: "Nama PT, Nama Jalan". Di luar radius
         // (misal tugas luar): cukup nama jalannya saja. Nama PT tersimpan
         // di kolom alamat_* saat absen di dalam radius (lihat QrController).
+        $teksMenit = function (?int $m) {
+            if ($m === null) return null;
+            if ($m < 60) return $m . ' menit';
+            return intdiv($m, 60) . ' jam' . ($m % 60 ? ' ' . ($m % 60) . ' menit' : '');
+        };
+
         $formatLokasi = function ($radius, $alamat, $namaJalan) {
             if ($radius === 'dalam_radius') {
                 return collect([$alamat, $namaJalan])->filter()->implode(', ');
@@ -43,6 +50,9 @@
         $detail = [
             'tanggal' => $hari['tanggal']->translatedFormat('l, d F Y'),
             'keterangan' => $hari['keterangan'] ?? null,
+            'jam_standar' => $hari['jam_standar'] ?? null,
+            'terlambat' => $teksMenit($hari['terlambat_menit'] ?? null),
+            'pulang_awal' => $teksMenit($hari['pulang_awal_menit'] ?? null),
             'status' => $info['label'],
             'warna' => $info['warna'],
             'icon' => $info['icon'],
@@ -143,13 +153,15 @@
     .periode-bar .label { text-align: center; }
     .periode-bar .label .bulan { font-weight: 800; color: #1e293b; font-size: 0.95rem; }
 
-    .ringkasan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .ringkasan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .ringkasan-grid .kotak {
         border-radius: 14px;
-        padding: 10px 12px;
+        padding: 10px 6px;
         display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 10px;
+        text-align: center;
+        gap: 4px;
     }
     .ringkasan-grid .kotak .angka { font-weight: 800; font-size: 1.15rem; line-height: 1; }
     .ringkasan-grid .kotak .label { font-size: 0.68rem; color: #64748b; font-weight: 600; }
@@ -251,6 +263,10 @@
             <div class="kotak" style="background:#fef2f2;">
                 <div class="angka" style="color:#ef4444;">{{ $ringkasan['tidak_hadir'] }}</div>
                 <div class="label">Tidak Hadir</div>
+            </div>
+            <div class="kotak" style="background:#fffbeb;">
+                <div class="angka" style="color:#f59e0b;">{{ $ringkasan['terlambat'] }}</div>
+                <div class="label">Terlambat</div>
             </div>
         </div>
 
@@ -449,16 +465,22 @@
         </div>
 
         <div class="row g-3 mb-3">
-            <div class="col-6">
+            <div class="col-4">
                 <div class="stat-card">
                     <div><div class="label">Hadir</div><div class="value">{{ $ringkasan['hadir'] }}</div></div>
                     <div class="icon-box" style="background:#dcfce7; color:#16a34a;"><i class="bi bi-check-circle"></i></div>
                 </div>
             </div>
-            <div class="col-6">
+            <div class="col-4">
                 <div class="stat-card">
                     <div><div class="label">Tidak Hadir</div><div class="value">{{ $ringkasan['tidak_hadir'] }}</div></div>
                     <div class="icon-box" style="background:#fee2e2; color:#ef4444;"><i class="bi bi-record-circle"></i></div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="stat-card">
+                    <div><div class="label">Terlambat</div><div class="value">{{ $ringkasan['terlambat'] }}</div></div>
+                    <div class="icon-box" style="background:#fef3c7; color:#f59e0b;"><i class="bi bi-clock-fill"></i></div>
                 </div>
             </div>
         </div>
@@ -569,6 +591,7 @@
                         <i class="bi ${d.icon}"></i> ${esc(d.status)}
                     </span>
                     ${d.keterangan ? '<div class="text-muted mt-1" style="font-size:.78rem;">' + esc(d.keterangan) + '</div>' : ''}
+                    ${d.jam_standar ? '<div class="text-muted mt-1" style="font-size:.78rem;">Jam kerja standar ' + esc(d.jam_standar) + '</div>' : ''}
                 </div>`;
 
             if (!d.ada) {
@@ -578,12 +601,15 @@
             html += `
                 <div class="detail-baris">
                     <div class="ikon"><i class="bi bi-box-arrow-in-right"></i></div>
-                    <div><div class="label">Jam Masuk</div><div class="nilai">${esc(d.jam_masuk)}</div></div>
+                    <div><div class="label">Jam Masuk</div><div class="nilai">${esc(d.jam_masuk)}</div>
+                        ${d.terlambat ? '<div class="sub" style="color:#f59e0b; font-weight:600;">Terlambat ' + esc(d.terlambat) + '</div>' : ''}
+                    </div>
                 </div>
                 <div class="detail-baris">
                     <div class="ikon"><i class="bi bi-box-arrow-right"></i></div>
                     <div><div class="label">Jam Pulang</div>
                         <div class="nilai">${d.jam_pulang ? esc(d.jam_pulang) : '<span class="text-muted">Belum absen pulang</span>'}</div>
+                        ${d.pulang_awal ? '<div class="sub" style="color:#f59e0b; font-weight:600;">Pulang ' + esc(d.pulang_awal) + ' lebih awal dari jam standar</div>' : ''}
                         ${d.durasi ? '<div class="sub">Durasi kerja: ' + esc(d.durasi) + '</div>' : ''}
                     </div>
                 </div>`;

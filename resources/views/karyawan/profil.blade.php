@@ -38,6 +38,9 @@
         'P' => 'Perempuan',
         default => $karyawan->jenis_kelamin ?? '-',
     };
+
+    $punyaQr = $karyawan && $karyawan->barcode_uid;
+    $namaPerusahaan = config('kantor.nama', 'PT. Indokom Sistem');
 @endphp
 
 {{-- ================================================================
@@ -68,7 +71,7 @@
         background: #ffffff;
         min-height: 100vh;
         box-shadow: none;
-        padding: 0 10px 90px 10px;
+        padding: 10px 10px 90px 10px;
         position: relative;
     }
     .mobile-shell .app-header {
@@ -101,40 +104,78 @@
         overflow: hidden;
     }
 
-    .profile-hero {
-        background: linear-gradient(135deg, #2563eb, #1d4ed8);
-        border-radius: 20px;
-        padding: 1.75rem 1.25rem;
-        text-align: center;
-        color: #fff;
+    /* ===== ID CARD (dipakai versi HP & desktop) ===== */
+    /* Versi HP: menempel penuh ke tepi layar & header, sudut membulat di bawah */
+    .id-card-full { border-radius: 26px !important; margin-top: -1rem; padding-top: 22px; }
+    .id-card {
         position: relative;
+        border-radius: 22px;
+        padding: 18px 18px 16px;
+        color: #fff;
         overflow: hidden;
+        background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #38bdf8 135%);
+        box-shadow: 0 14px 30px -12px rgba(37,99,235,.6);
     }
-    .profile-hero .avatar-besar {
-        width: 84px; height: 84px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.18);
-        border: 3px solid rgba(255,255,255,0.5);
+    .id-card::before {
+        content: ''; position: absolute; width: 230px; height: 230px; border-radius: 50%;
+        right: -70px; top: -95px;
+        background: radial-gradient(circle, rgba(255,255,255,.24), transparent 70%);
+    }
+    .id-card::after {
+        content: ''; position: absolute; width: 190px; height: 190px; border-radius: 50%;
+        left: -65px; bottom: -95px;
+        background: radial-gradient(circle, rgba(255,255,255,.15), transparent 70%);
+    }
+    .id-card > * { position: relative; z-index: 1; }
+    .id-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .id-brand {
+        font-size: .7rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+        opacity: .92; display: flex; align-items: center; gap: 6px;
+    }
+    .id-status {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.22);
+        backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        padding: 4px 10px; border-radius: 20px; font-size: .7rem; font-weight: 700;
+    }
+    .id-status i { font-size: .45rem; }
+    .id-main { display: flex; align-items: center; gap: 14px; }
+    .id-avatar {
+        width: 66px; height: 66px; border-radius: 20px; flex-shrink: 0;
+        background: rgba(255,255,255,.18); border: 1.5px solid rgba(255,255,255,.45);
+        backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
         display: flex; align-items: center; justify-content: center;
-        font-size: 1.9rem;
-        font-weight: 800;
-        margin: 0 auto 12px;
+        font-size: 1.55rem; font-weight: 800;
     }
-    .profile-hero .nama { font-size: 1.15rem; font-weight: 800; margin-bottom: 2px; }
-    .profile-hero .jabatan { font-size: 0.85rem; opacity: 0.85; }
-    .profile-hero .badge-dept {
-        background: rgba(255,255,255,0.16);
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.72rem;
-        font-weight: 600;
-        margin-top: 10px;
+    .id-nama { font-size: 1.1rem; font-weight: 800; line-height: 1.2; word-break: break-word; }
+    .id-jabatan { font-size: .82rem; opacity: .92; margin-top: 2px; }
+    .id-chip {
+        display: inline-flex; align-items: center; gap: 6px; margin-top: 8px;
+        background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.2);
+        padding: 3px 10px; border-radius: 20px; font-size: .7rem; font-weight: 600;
     }
-    .profile-hero i.deco {
-        position: absolute; font-size: 6rem; opacity: 0.12;
-        right: -14px; bottom: -18px;
+    .id-bottom {
+        display: flex; justify-content: space-between; align-items: flex-end; gap: 12px;
+        margin-top: 18px; padding-top: 14px; border-top: 1px dashed rgba(255,255,255,.32);
     }
+    .id-label { font-size: .62rem; text-transform: uppercase; letter-spacing: .08em; opacity: .72; font-weight: 600; }
+    .id-nik { font-size: 1rem; font-weight: 800; letter-spacing: .04em; }
+    .id-nik-sm { font-size: .8rem; font-weight: 600; }
+    .id-qr {
+        position: relative; width: 88px; height: 88px; padding: 7px; border: none; flex-shrink: 0;
+        background: #fff; border-radius: 14px; cursor: pointer; overflow: hidden;
+        box-shadow: 0 6px 16px rgba(0,0,0,.22); transition: transform .15s;
+    }
+    .id-qr:active { transform: scale(.96); }
+    .id-qr-dummy { width: 100%; height: 100%; filter: blur(3px); opacity: .85; }
+    .id-qr-dummy img, .id-qr-dummy canvas { width: 100% !important; height: 100% !important; display: block; }
+    .id-qr-lock {
+        position: absolute; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 1px;
+        background: rgba(255,255,255,.6); color: #1e3a8a; font-weight: 700;
+    }
+    .id-qr-lock i { font-size: 1.15rem; }
+    .id-qr-lock small { font-size: .6rem; }
 
     .info-list .info-row {
         display: flex;
@@ -198,12 +239,33 @@
 
     <div class="px-0 pt-3 pb-3">
 
-        <div class="profile-hero mb-4">
-            <i class="bi bi-person-circle deco"></i>
-            <div class="avatar-besar">{{ $inisial ?: '?' }}</div>
-            <div class="nama">{{ $namaTampil }}</div>
-            <div class="jabatan">{{ $jabatanTampil }}</div>
-            <div class="badge-dept"><i class="bi bi-building me-1"></i>{{ $departemenTampil }}</div>
+        <div class="id-card id-card-full mb-4">
+            <div class="id-top">
+                <div class="id-brand"><i class="bi bi-qr-code-scan"></i> {{ $namaPerusahaan }}</div>
+                <span class="id-status"><i class="bi bi-circle-fill" style="color: {{ $statusWarna }};"></i> {{ ucfirst($statusKaryawan) }}</span>
+            </div>
+            <div class="id-main">
+                <div class="id-avatar">{{ $inisial ?: '?' }}</div>
+                <div>
+                    <div class="id-nama">{{ $namaTampil }}</div>
+                    <div class="id-jabatan">{{ $jabatanTampil }}</div>
+                    <span class="id-chip"><i class="bi bi-building"></i> {{ $departemenTampil }}</span>
+                </div>
+            </div>
+            <div class="id-bottom">
+                <div>
+                    <div class="id-label">NIK Kerja</div>
+                    <div class="id-nik">{{ $karyawan->nik_kerja ?? '-' }}</div>
+                    <div class="id-label mt-2">Bergabung</div>
+                    <div class="id-nik-sm">{{ $tanggalMasukTampil }}</div>
+                </div>
+                @if ($punyaQr)
+                    <button type="button" class="id-qr" data-bs-toggle="modal" data-bs-target="#qrModal" aria-label="Tampilkan QR">
+                        <div class="id-qr-dummy" id="qr-dummy-m"></div>
+                        <span class="id-qr-lock"><i class="bi bi-eye-fill"></i><small>Tampilkan</small></span>
+                    </button>
+                @endif
+            </div>
         </div>
 
         @if ($karyawan)
@@ -421,40 +483,6 @@
         }
         .panel h6 { font-weight: 700; color: #1e293b; margin-bottom: 1rem; }
 
-        .profile-card-desktop {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            border-radius: 14px;
-            padding: 1.75rem 1.25rem;
-            text-align: center;
-            color: #fff;
-            position: relative;
-            overflow: hidden;
-        }
-        .profile-card-desktop .avatar-besar {
-            width: 78px; height: 78px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.18);
-            border: 3px solid rgba(255,255,255,0.5);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.7rem;
-            font-weight: 800;
-            margin: 0 auto 12px;
-        }
-        .profile-card-desktop .nama { font-size: 1.05rem; font-weight: 800; }
-        .profile-card-desktop .jabatan { font-size: 0.8rem; opacity: 0.85; margin-bottom: 10px; }
-        .profile-card-desktop .badge-dept {
-            background: rgba(255,255,255,0.16);
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.72rem;
-            font-weight: 600;
-        }
-        .profile-card-desktop i.deco {
-            position: absolute; font-size: 6rem; opacity: 0.12;
-            right: -14px; bottom: -18px;
-        }
-
         .ringkasan-mini {
             display: flex;
             justify-content: space-between;
@@ -542,26 +570,49 @@
 
         <div class="row g-3">
             <div class="col-4">
-                <div class="profile-card-desktop">
-                    <i class="bi bi-person-circle deco"></i>
-                    <div class="avatar-besar">{{ $inisial ?: '?' }}</div>
-                    <div class="nama">{{ $namaTampil }}</div>
-                    <div class="jabatan">{{ $jabatanTampil }}</div>
-                    <div class="badge-dept"><i class="bi bi-building me-1"></i>{{ $departemenTampil }}</div>
+                <div class="id-card">
+            <div class="id-top">
+                <div class="id-brand"><i class="bi bi-qr-code-scan"></i> {{ $namaPerusahaan }}</div>
+                <span class="id-status"><i class="bi bi-circle-fill" style="color: {{ $statusWarna }};"></i> {{ ucfirst($statusKaryawan) }}</span>
+            </div>
+            <div class="id-main">
+                <div class="id-avatar">{{ $inisial ?: '?' }}</div>
+                <div>
+                    <div class="id-nama">{{ $namaTampil }}</div>
+                    <div class="id-jabatan">{{ $jabatanTampil }}</div>
+                    <span class="id-chip"><i class="bi bi-building"></i> {{ $departemenTampil }}</span>
+                </div>
+            </div>
+            <div class="id-bottom">
+                <div>
+                    <div class="id-label">NIK Kerja</div>
+                    <div class="id-nik">{{ $karyawan->nik_kerja ?? '-' }}</div>
+                    <div class="id-label mt-2">Bergabung</div>
+                    <div class="id-nik-sm">{{ $tanggalMasukTampil }}</div>
+                </div>
+                @if ($punyaQr)
+                    <button type="button" class="id-qr" data-bs-toggle="modal" data-bs-target="#qrModal" aria-label="Tampilkan QR">
+                        <div class="id-qr-dummy" id="qr-dummy-d"></div>
+                        <span class="id-qr-lock"><i class="bi bi-eye-fill"></i><small>Tampilkan</small></span>
+                    </button>
+                @endif
+            </div>
+        </div>
 
-                    @if ($karyawan)
-                        <div class="ringkasan-mini">
+                @if ($karyawan)
+                    <div class="panel mt-3">
+                        <div class="ringkasan-mini" style="margin-top:0; border-top:none; padding-top:0;">
                             <div class="item">
-                                <div class="angka" style="color:#fff;">{{ $jumlahHadirBulanIni }}</div>
-                                <div class="label" style="color:rgba(255,255,255,0.75);">Hadir bulan ini</div>
+                                <div class="angka" style="color:#2563eb;">{{ $jumlahHadirBulanIni }}</div>
+                                <div class="label">Hadir bulan ini</div>
                             </div>
                             <div class="item">
-                                <div class="angka" style="color:#fff;">{{ ucfirst($statusKaryawan) }}</div>
-                                <div class="label" style="color:rgba(255,255,255,0.75);">Status</div>
+                                <div class="angka" style="color: {{ $statusWarna }};">{{ ucfirst($statusKaryawan) }}</div>
+                                <div class="label">Status</div>
                             </div>
                         </div>
-                    @endif
-                </div>
+                    </div>
+                @endif
 
                 <form method="POST" action="{{ route('logout') }}" class="mt-3">
                     @csrf
@@ -656,5 +707,64 @@
         </div>
     </main>
 </div>
+
+@if ($punyaQr)
+<div class="modal fade" id="qrModal" tabindex="-1" data-token="{{ $karyawan->barcode_uid }}">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 340px;">
+        <div class="modal-content" style="border-radius: 22px;">
+            <div class="modal-body text-center p-4">
+                <div class="fw-bold" style="color:#1e293b;">{{ $namaTampil }}</div>
+                <div class="text-muted mb-3" style="font-size:.8rem;">{{ $karyawan->nik_kerja }}</div>
+                <div id="qr-real" class="d-inline-block p-3 bg-white border rounded-4"></div>
+                <div class="alert alert-warning py-2 px-3 mt-3 mb-3 text-start" style="font-size:.75rem;">
+                    <i class="bi bi-shield-lock-fill me-1"></i>
+                    QR ini bisa dipakai untuk login dan absen atas nama kamu. Jangan dibagikan atau di-screenshot ke orang lain.
+                </div>
+                <button type="button" class="btn btn-biru w-100" data-bs-dismiss="modal" style="border-radius:12px;">Tutup</button>
+                <div class="text-muted mt-2" style="font-size:.68rem;">Otomatis tertutup dalam 60 detik</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    (function () {
+        // Thumbnail di kartu sengaja memakai QR "palsu" yang di-blur, supaya
+        // screenshot halaman profil tidak membocorkan QR asli.
+        ['m', 'd'].forEach(function (sfx) {
+            var el = document.getElementById('qr-dummy-' + sfx);
+            if (el) new QRCode(el, { text: 'INDOKOM-ID-CARD', width: 74, height: 74, correctLevel: QRCode.CorrectLevel.L });
+        });
+
+        var modalEl = document.getElementById('qrModal');
+        if (!modalEl) return;
+        var timer;
+
+        // QR asli (isi = barcode_uid, sama dengan yang dicetak HRD) baru
+        // digambar saat modal dibuka, dan dihapus lagi saat ditutup.
+        modalEl.addEventListener('shown.bs.modal', function () {
+            var target = document.getElementById('qr-real');
+            target.innerHTML = '';
+            new QRCode(target, {
+                text: modalEl.dataset.token,
+                width: 220, height: 220,
+                colorDark: '#0f172a', colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+            timer = setTimeout(function () {
+                var inst = bootstrap.Modal.getInstance(modalEl);
+                if (inst) inst.hide();
+            }, 60000);
+        });
+        modalEl.addEventListener('hidden.bs.modal', function () {
+            clearTimeout(timer);
+            document.getElementById('qr-real').innerHTML = '';
+        });
+    })();
+</script>
+@endpush
+@endif
 
 @endsection
