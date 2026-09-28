@@ -77,10 +77,15 @@
                 <i class="bi bi-clock-history mr-3"></i>
                 <span class="text-sm font-medium">Data Lembur</span>
             </a>
-            <a href="#" class="flex items-center justify-between text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <div class="flex items-center">
-                    <i class="bi bi-file-earmark-plus mr-3"></i>
-                    <span class="text-sm font-medium">Pengajuan Lembur</span>
+            <a href="{{ route('lembur.pengajuan') }}" class="flex items-center justify-between text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
+            <div class="flex items-center">
+                <i class="bi bi-file-earmark-plus mr-3"></i>
+                <span class="text-sm font-medium">Pengajuan Lembur</span>
+            </div>
+            @if(isset($lemburMenunggu) && $lemburMenunggu > 0)
+                <span class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $lemburMenunggu }}</span>
+            @endif
+            </a>
                 </div>
                 @if(isset($lemburMenunggu) && $lemburMenunggu > 0)
                     <span class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $lemburMenunggu }}</span>
