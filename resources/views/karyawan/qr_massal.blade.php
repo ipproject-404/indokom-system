@@ -42,12 +42,11 @@
 
             <!-- Bagian QR Code (Menggunakan API pihak ketiga atau library qrcode Anda, sesuaikan dengan file qr.blade.php Anda) -->
             <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 mb-4">
-                <!-- Ubah sumber gambar QR ini sesuai dengan struktur project Anda yang sudah ada -->
                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $karyawan->barcode_uid }}" alt="QR Code" class="w-36 h-36 object-contain">
             </div>
 
             <h2 class="font-bold text-gray-900 text-lg mb-0.5">{{ $karyawan->nama_lengkap }}</h2>
-            <p class="text-xs text-gray-500 mb-3">{{ $karyawan->nik_kerja }}</p>
+            <p class="text-xs text-gray-500 mb-3">{{ $karyawan->barcode_uid }}</p>
 
             <div class="w-full bg-blue-50/50 rounded-xl p-2.5 border border-blue-50">
                 <div class="text-xs font-semibold text-blue-900">{{ $karyawan->jabatan->nama_jabatan ?? '-' }}</div>
