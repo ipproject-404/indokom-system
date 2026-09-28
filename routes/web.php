@@ -60,7 +60,13 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::get('/hrd/jabatan-departemen', [JabatanDepartemenController::class, 'index'])->name('jabatan.departemen.index');
     Route::get('/hrd/absensi/log-kehadiran', [App\Http\Controllers\PresensiController::class, 'logHarian'])->name('kehadiran.log');
     Route::get('/hrd/absensi/export-excel', [App\Http\Controllers\PresensiController::class, 'exportExcel'])->name('kehadiran.export');
+    Route::get('/hrd/lembur/pengajuan', [App\Http\Controllers\LemburController::class, 'index'])->name('lembur.pengajuan');
+    Route::get('/hrd/lembur/export-excel', [App\Http\Controllers\LemburController::class, 'exportExcel'])->name('lembur.export');
     
+    Route::post('/hrd/lembur/{id}/approve', [App\Http\Controllers\LemburController::class, 'approve'])->name('lembur.approve');
+    Route::post('/hrd/lembur/{id}/reject', [App\Http\Controllers\LemburController::class, 'reject'])->name('lembur.reject');
+    Route::post('/hrd/lembur/{id}/approve', [App\Http\Controllers\LemburController::class, 'approve'])->name('lembur.approve');
+    Route::post('/hrd/lembur/{id}/reject', [App\Http\Controllers\LemburController::class, 'reject'])->name('lembur.reject');
     Route::put('/hrd/karyawan/{id}', [KaryawanController::class, 'update'])->name('karyawan.update');
     Route::post('/hrd/karyawan', [KaryawanController::class, 'store'])->name('karyawan.store');
     Route::post('/hrd/departemen/store', [JabatanDepartemenController::class, 'storeDepartemen'])->name('departemen.store');

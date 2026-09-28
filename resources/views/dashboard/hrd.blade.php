@@ -86,11 +86,6 @@
                 <span class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $lemburMenunggu }}</span>
             @endif
             </a>
-                </div>
-                @if(isset($lemburMenunggu) && $lemburMenunggu > 0)
-                    <span class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $lemburMenunggu }}</span>
-                @endif
-            </a>
 
             <div class="uppercase text-gray-400 text-xs font-bold mb-3 mt-6">Akun</div>
             <a href="#" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
