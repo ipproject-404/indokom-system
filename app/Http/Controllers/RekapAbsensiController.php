@@ -51,6 +51,12 @@ class RekapAbsensiController extends Controller
             ? Carbon::parse($karyawan->tanggal_masuk)->startOfDay()
             : null;
 
+        // Hari libur = setiap hari Minggu + tanggal merah (libur nasional)
+        // dari config/hari_libur.php. Sabtu dihitung hari kerja biasa.
+        $liburNasional = config('hari_libur.libur_nasional', []);
+        $cutiBersama = config('hari_libur.cuti_bersama', []);
+        $hitungCutiBersama = config('hari_libur.anggap_cuti_bersama_libur', false);
+
         $harian = [];
 
         for ($tgl = $tanggalMulai->copy(); $tgl->lte($tanggalAkhir); $tgl->addDay()) {
@@ -59,11 +65,16 @@ class RekapAbsensiController extends Controller
             $isMasaDepan = $key > $hariIni;
             $belumBergabung = $tanggalMasuk && $tgl->lt($tanggalMasuk);
 
+            $namaLibur = $liburNasional[$key]
+                ?? ($hitungCutiBersama ? ($cutiBersama[$key] ?? null) : null);
+            $isLibur = $tgl->isSunday() || $namaLibur !== null;
+            $keteranganLibur = $namaLibur ?? ($tgl->isSunday() ? 'Hari Minggu' : null);
+
             // ------------------------------------------------------------
             // Status per hari, urutan pengecekan penting:
             // 1) Sebelum tanggal_masuk karyawan -> belum bergabung, tidak
             //    dihitung sama sekali (bukan "tidak hadir").
-            // 2) Sabtu/Minggu dianggap hari libur.
+            // 2) Hari Minggu atau tanggal merah -> hari libur (Sabtu = hari kerja).
             // 3) Ada catatan presensi -> langsung "hadir". Absen masuk/pulang
             //    sudah tidak lagi lewat proses verifikasi HRD (begitu discan
             //    dan tercatat, otomatis sah) -- lihat QrController::scanAbsensi().
@@ -77,7 +88,7 @@ class RekapAbsensiController extends Controller
             // ------------------------------------------------------------
             if ($belumBergabung) {
                 $status = 'belum_gabung';
-            } elseif ($tgl->isWeekend()) {
+            } elseif ($isLibur) {
                 $status = 'libur';
             } elseif ($presensi) {
                 $status = 'hadir';
@@ -92,6 +103,7 @@ class RekapAbsensiController extends Controller
                 'status' => $status,
                 'presensi' => $presensi,
                 'hari_ini' => $key === $hariIni,
+                'keterangan' => $status === 'libur' ? $keteranganLibur : null,
             ];
         }
 

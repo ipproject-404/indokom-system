@@ -23,6 +23,57 @@
         ->implode('');
 
     $namaHari = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+
+    // Detail per tanggal yang dikirim ke JS lewat atribut data-detail
+    // (dipakai saat kotak tanggal di kalender diklik).
+    $buatDetail = function (array $hari) use ($statusInfo) {
+        $p = $hari['presensi'];
+        $info = $statusInfo[$hari['status']];
+
+        // Di dalam radius kantor: "Nama PT, Nama Jalan". Di luar radius
+        // (misal tugas luar): cukup nama jalannya saja. Nama PT tersimpan
+        // di kolom alamat_* saat absen di dalam radius (lihat QrController).
+        $formatLokasi = function ($radius, $alamat, $namaJalan) {
+            if ($radius === 'dalam_radius') {
+                return collect([$alamat, $namaJalan])->filter()->implode(', ');
+            }
+            return $namaJalan ?: $alamat;
+        };
+
+        $detail = [
+            'tanggal' => $hari['tanggal']->translatedFormat('l, d F Y'),
+            'keterangan' => $hari['keterangan'] ?? null,
+            'status' => $info['label'],
+            'warna' => $info['warna'],
+            'icon' => $info['icon'],
+            'ada' => (bool) $p,
+        ];
+
+        if ($p) {
+            $masuk = \Carbon\Carbon::parse($p->tanggal . ' ' . $p->jam_masuk);
+            $pulang = $p->jam_pulang ? \Carbon\Carbon::parse($p->tanggal . ' ' . $p->jam_pulang) : null;
+
+            $durasi = null;
+            if ($pulang) {
+                $menit = (int) abs($masuk->diffInMinutes($pulang));
+                $durasi = intdiv($menit, 60) . ' jam ' . ($menit % 60) . ' menit';
+            }
+
+            $detail += [
+                'jam_masuk' => $masuk->format('H:i'),
+                'jam_pulang' => $pulang?->format('H:i'),
+                'durasi' => $durasi,
+                'lokasi_masuk' => $formatLokasi($p->status_radius_masuk, $p->alamat_masuk, $p->nama_jalan_masuk),
+                'jarak_masuk' => $p->jarak_masuk_meter !== null ? round($p->jarak_masuk_meter) : null,
+                'radius_masuk' => $p->status_radius_masuk,
+                'lokasi_pulang' => $formatLokasi($p->status_radius_pulang, $p->alamat_pulang, $p->nama_jalan_pulang),
+                'jarak_pulang' => $p->jarak_pulang_meter !== null ? round($p->jarak_pulang_meter) : null,
+                'radius_pulang' => $p->status_radius_pulang,
+            ];
+        }
+
+        return $detail;
+    };
 @endphp
 
 {{-- ================================================================
@@ -141,6 +192,8 @@
         color: #2563eb;
     }
     .kalender-sel i { font-size: 0.65rem; }
+    .kalender-sel:not(.kosong) { cursor: pointer; }
+    .kalender-sel:not(.kosong):active { background: #eff6ff; }
 
     .legenda-item {
         display: flex;
@@ -213,7 +266,7 @@
                         @if ($hari === null)
                             <div class="kalender-sel kosong"></div>
                         @else
-                            <div class="kalender-sel {{ $hari['hari_ini'] ? 'hari-ini' : '' }}">
+                            <div class="kalender-sel {{ $hari['hari_ini'] ? 'hari-ini' : '' }}" data-detail="{{ json_encode($buatDetail($hari)) }}">
                                 <div class="tanggal-angka">{{ $hari['tanggal']->day }}</div>
                                 <i class="bi {{ $statusInfo[$hari['status']]['icon'] }}" style="color: {{ $statusInfo[$hari['status']]['warna'] }};"></i>
                             </div>
@@ -343,6 +396,8 @@
         }
         .kalender-sel-d.hari-ini .tanggal-angka { border: 2px solid #2563eb; color: #2563eb; }
         .kalender-sel-d i { font-size: 0.85rem; }
+        .kalender-sel-d:not(.kosong) { cursor: pointer; transition: background .15s; }
+        .kalender-sel-d:not(.kosong):hover { background: #eff6ff; }
 
         .legenda-item-d { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #475569; padding: 6px 0; }
         .legenda-item-d i { font-size: 0.9rem; width: 18px; text-align: center; }
@@ -422,7 +477,7 @@
                         @if ($hari === null)
                             <div class="kalender-sel-d kosong"></div>
                         @else
-                            <div class="kalender-sel-d {{ $hari['hari_ini'] ? 'hari-ini' : '' }}">
+                            <div class="kalender-sel-d {{ $hari['hari_ini'] ? 'hari-ini' : '' }}" data-detail="{{ json_encode($buatDetail($hari)) }}">
                                 <div class="tanggal-angka">{{ $hari['tanggal']->day }}</div>
                                 <i class="bi {{ $statusInfo[$hari['status']]['icon'] }}" style="color: {{ $statusInfo[$hari['status']]['warna'] }};"></i>
                             </div>
@@ -444,5 +499,120 @@
         </div>
     </main>
 </div>
+
+{{-- ================================================================
+     DETAIL HARIAN: bottom sheet di HP, modal di desktop
+================================================================ --}}
+<style>
+    .detail-baris { display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px solid #f1f5f9; }
+    .detail-baris:last-child { border-bottom: none; }
+    .detail-baris .ikon {
+        width: 36px; height: 36px; border-radius: 10px; background: #eff6ff; color: #2563eb;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .detail-baris .label { font-size: 0.72rem; color: #94a3b8; font-weight: 600; }
+    .detail-baris .nilai { font-size: 0.88rem; color: #1e293b; font-weight: 600; word-break: break-word; }
+    .detail-baris .sub { font-size: 0.75rem; color: #64748b; }
+    .badge-status-hari {
+        display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px;
+        font-size: 0.78rem; font-weight: 700;
+    }
+    .offcanvas-bottom.detail-sheet { border-radius: 20px 20px 0 0; max-width: 480px; margin: 0 auto; height: auto; max-height: 80vh; }
+</style>
+
+<div class="offcanvas offcanvas-bottom detail-sheet d-lg-none" tabindex="-1" id="detailSheet">
+    <div class="offcanvas-header pb-0">
+        <h6 class="offcanvas-title fw-bold" id="detailSheetJudul">Detail Absensi</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body" id="detailSheetIsi"></div>
+</div>
+
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 16px;">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold" id="detailModalJudul">Detail Absensi</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailModalIsi"></div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+    (function () {
+        const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+        function barisLokasi(judul, ikon, lokasi, jarak, radius) {
+            const ket = radius === 'dalam_radius' ? 'Di dalam radius kantor'
+                      : radius === 'luar_radius' ? 'Di luar radius kantor' : '';
+            const warna = radius === 'luar_radius' ? '#ef4444' : '#16a34a';
+            const jarakTeks = jarak !== null && jarak !== undefined ? jarak + ' m dari kantor' : '';
+            return `
+                <div class="detail-baris">
+                    <div class="ikon"><i class="bi ${ikon}"></i></div>
+                    <div>
+                        <div class="label">${judul}</div>
+                        <div class="nilai">${esc(lokasi || 'Alamat tidak tercatat')}</div>
+                        <div class="sub">${esc(jarakTeks)}${ket ? ' &middot; <span style="color:' + warna + '">' + ket + '</span>' : ''}</div>
+                    </div>
+                </div>`;
+        }
+
+        function bangunIsi(d) {
+            let html = `
+                <div class="mb-2">
+                    <div class="text-muted" style="font-size:.8rem;">${esc(d.tanggal)}</div>
+                    <span class="badge-status-hari mt-1" style="background:${d.warna}1a; color:${d.warna};">
+                        <i class="bi ${d.icon}"></i> ${esc(d.status)}
+                    </span>
+                    ${d.keterangan ? '<div class="text-muted mt-1" style="font-size:.78rem;">' + esc(d.keterangan) + '</div>' : ''}
+                </div>`;
+
+            if (!d.ada) {
+                return html + '<div class="text-muted py-3" style="font-size:.85rem;">Tidak ada catatan absen di tanggal ini.</div>';
+            }
+
+            html += `
+                <div class="detail-baris">
+                    <div class="ikon"><i class="bi bi-box-arrow-in-right"></i></div>
+                    <div><div class="label">Jam Masuk</div><div class="nilai">${esc(d.jam_masuk)}</div></div>
+                </div>
+                <div class="detail-baris">
+                    <div class="ikon"><i class="bi bi-box-arrow-right"></i></div>
+                    <div><div class="label">Jam Pulang</div>
+                        <div class="nilai">${d.jam_pulang ? esc(d.jam_pulang) : '<span class="text-muted">Belum absen pulang</span>'}</div>
+                        ${d.durasi ? '<div class="sub">Durasi kerja: ' + esc(d.durasi) + '</div>' : ''}
+                    </div>
+                </div>`;
+
+            html += barisLokasi('Lokasi Absen Masuk', 'bi-geo-alt', d.lokasi_masuk, d.jarak_masuk, d.radius_masuk);
+            if (d.jam_pulang) {
+                html += barisLokasi('Lokasi Absen Pulang', 'bi-geo-alt-fill', d.lokasi_pulang, d.jarak_pulang, d.radius_pulang);
+            }
+            return html;
+        }
+
+        document.addEventListener('click', function (e) {
+            const sel = e.target.closest('.kalender-sel[data-detail], .kalender-sel-d[data-detail]');
+            if (!sel) return;
+
+            const d = JSON.parse(sel.dataset.detail);
+            const isi = bangunIsi(d);
+            const desktop = window.matchMedia('(min-width: 992px)').matches;
+
+            if (desktop) {
+                document.getElementById('detailModalIsi').innerHTML = isi;
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('detailModal')).show();
+            } else {
+                document.getElementById('detailSheetIsi').innerHTML = isi;
+                bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('detailSheet')).show();
+            }
+        });
+    })();
+</script>
+@endpush
 
 @endsection
