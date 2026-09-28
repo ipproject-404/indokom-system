@@ -9,10 +9,7 @@ use Carbon\Carbon;
 class ProfilController extends Controller
 {
     /**
-     * Halaman profil karyawan yang sedang login.
-     * Data diambil dari akun yang login sendiri (Auth::user()) --
-     * karyawan tidak bisa lihat/akses profil orang lain lewat sini,
-     * beda dengan halaman HRD yang memang perlu {id} di URL.
+     * Halaman profil pengguna yang sedang login.
      */
     public function index()
     {
@@ -28,6 +25,16 @@ class ProfilController extends Controller
                 ->count();
         }
 
+        // Jika role HRD atau Admin, arahkan ke profil khusus HRD
+        if ($user->role === 'hrd' || $user->role === 'admin') {
+            return view('karyawan.profil_hrd', [
+                'user' => $user,
+                'karyawan' => $karyawan,
+                'jumlahHadirBulanIni' => $jumlahHadirBulanIni,
+            ]);
+        }
+
+        // Default untuk karyawan biasa
         return view('karyawan.profil', [
             'user' => $user,
             'karyawan' => $karyawan,

@@ -62,6 +62,7 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::get('/hrd/absensi/export-excel', [App\Http\Controllers\PresensiController::class, 'exportExcel'])->name('kehadiran.export');
     Route::get('/hrd/lembur/pengajuan', [App\Http\Controllers\LemburController::class, 'index'])->name('lembur.pengajuan');
     Route::get('/hrd/lembur/export-excel', [App\Http\Controllers\LemburController::class, 'exportExcel'])->name('lembur.export');
+    Route::get('/hrd/profil', [ProfilController::class, 'index'])->name('profile.index');
     
     Route::post('/hrd/lembur/{id}/approve', [App\Http\Controllers\LemburController::class, 'approve'])->name('lembur.approve');
     Route::post('/hrd/lembur/{id}/reject', [App\Http\Controllers\LemburController::class, 'reject'])->name('lembur.reject');

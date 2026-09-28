@@ -72,10 +72,6 @@
                 <span class="text-sm font-medium">Log Kehadiran Harian</span>
             </a>
 
-            <div class="uppercase text-gray-400 text-xs font-bold mb-3 mt-6">Manajemen Lembur</div>
-            <a href="#" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <i class="bi bi-clock-history mr-3"></i>
-                <span class="text-sm font-medium">Data Lembur</span>
             </a>
             <a href="{{ route('lembur.pengajuan') }}" class="flex items-center justify-between text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
             <div class="flex items-center">
@@ -88,7 +84,7 @@
             </a>
 
             <div class="uppercase text-gray-400 text-xs font-bold mb-3 mt-6">Akun</div>
-            <a href="#" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
+            <a href="{{ route('profile.index') }}" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
                 <i class="bi bi-person-circle mr-3"></i>
                 <span class="text-sm font-medium">Profil Saya</span>
             </a>
@@ -103,10 +99,16 @@
 
         <div class="border-t border-gray-200 p-4 bg-gray-50">
             <div class="flex items-center">
-                <div class="bg-blue-200 text-blue-800 rounded-full flex items-center justify-center mr-3 w-10 h-10 shrink-0 font-bold">HR</div>
-                <div>
-                    <div class="font-semibold text-sm text-gray-800">Admin HRD</div>
-                    <div class="text-xs text-blue-600 font-medium">Role: hrd</div>
+                <div class="bg-blue-600 text-white rounded-full flex items-center justify-center mr-3 w-10 h-10 shrink-0 font-bold shadow-sm">
+                    {{ strtoupper(substr(Auth::user()->name ?? 'HR', 0, 2)) }}
+                </div>
+                <div class="overflow-hidden">
+                    <div class="font-bold text-sm text-gray-800 truncate" title="{{ Auth::user()->name ?? 'Admin HRD' }}">
+                        {{ Auth::user()->name ?? 'Admin HRD' }}
+                    </div>
+                    <div class="text-xs text-blue-600 font-semibold truncate">
+                        {{ optional(Auth::user()->karyawan)->departemen->nama_departemen ?? 'Role: '. (Auth::user()->role ?? 'HRD') }}
+                    </div>
                 </div>
             </div>
         </div>
