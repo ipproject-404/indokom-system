@@ -7,7 +7,6 @@
     <title>Dashboard HRD - Sistem Presensi & Kinerja</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Script untuk Jam Realtime -->
     <script>
         function updateClock() {
             var now = new Date();
@@ -62,7 +61,6 @@
             </a>
 
             <div class="uppercase text-gray-400 text-xs font-bold mb-3 mt-6">Kehadiran & QR</div>
-            <!-- LINK MANAJEMEN QR -->
             <a href="{{ route('karyawan.qr.index') }}" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
                 <i class="bi bi-qr-code-scan mr-3"></i>
                 <span class="text-sm font-medium">Manajemen QR Code</span>
@@ -72,15 +70,14 @@
                 <span class="text-sm font-medium">Log Kehadiran Harian</span>
             </a>
 
-            </a>
             <a href="{{ route('lembur.pengajuan') }}" class="flex items-center justify-between text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
-            <div class="flex items-center">
-                <i class="bi bi-file-earmark-plus mr-3"></i>
-                <span class="text-sm font-medium">Pengajuan Lembur</span>
-            </div>
-            @if(isset($lemburMenunggu) && $lemburMenunggu > 0)
-                <span class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $lemburMenunggu }}</span>
-            @endif
+                <div class="flex items-center">
+                    <i class="bi bi-file-earmark-plus mr-3"></i>
+                    <span class="text-sm font-medium">Pengajuan Lembur</span>
+                </div>
+                @if(isset($lemburMenunggu) && $lemburMenunggu > 0)
+                    <span class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $lemburMenunggu }}</span>
+                @endif
             </a>
 
             <div class="uppercase text-gray-400 text-xs font-bold mb-3 mt-6">Akun</div>
@@ -97,21 +94,30 @@
             </form>
         </div>
 
+        <!-- ========== PERUBAHAN DI SINI ========== -->
+        <!-- Info User: Nama Asli + Jabatan + Departemen (Tanpa Role) -->
+        @php
+            $userKaryawan = Auth::user()->karyawan ?? null;
+            $namaTampil = $userKaryawan->nama_lengkap ?? (Auth::user()->name ?? '-');
+            $jabatanTampil = optional($userKaryawan->jabatan ?? null)->nama_jabatan ?? '-';
+            $departemenTampil = optional($userKaryawan->departemen ?? null)->nama_departemen ?? '-';
+        @endphp
         <div class="border-t border-gray-200 p-4 bg-gray-50">
             <div class="flex items-center">
                 <div class="bg-blue-600 text-white rounded-full flex items-center justify-center mr-3 w-10 h-10 shrink-0 font-bold shadow-sm">
-                    {{ strtoupper(substr(Auth::user()->name ?? 'HR', 0, 2)) }}
+                    {{ strtoupper(substr($namaTampil, 0, 2)) }}
                 </div>
                 <div class="overflow-hidden">
-                    <div class="font-bold text-sm text-gray-800 truncate" title="{{ Auth::user()->name ?? 'Admin HRD' }}">
-                        {{ Auth::user()->name ?? 'Admin HRD' }}
+                    <div class="font-bold text-sm text-gray-800 truncate" title="{{ $namaTampil }}">
+                        {{ $namaTampil }}
                     </div>
-                    <div class="text-xs text-blue-600 font-semibold truncate">
-                        {{ optional(Auth::user()->karyawan)->departemen->nama_departemen ?? 'Role: '. (Auth::user()->role ?? 'HRD') }}
+                    <div class="text-xs text-blue-600 font-semibold truncate" title="{{ $jabatanTampil }} • {{ $departemenTampil }}">
+                        {{ $jabatanTampil }} &bull; {{ $departemenTampil }}
                     </div>
                 </div>
             </div>
         </div>
+        <!-- ========== AKHIR PERUBAHAN ========== -->
     </aside>
 
     <!-- =========================
@@ -223,10 +229,8 @@
                                             <div class="text-xs font-medium text-gray-800"><span class="text-emerald-600 font-bold mr-1">Masuk:</span> {{ \Carbon\Carbon::parse($prs->jam_masuk)->format('H:i') }} WIB</div>
                                             <div class="text-xs font-medium text-gray-400 mt-0.5"><span class="text-rose-400 font-bold mr-1">Pulang:</span> {{ $prs->jam_pulang ? \Carbon\Carbon::parse($prs->jam_pulang)->format('H:i') . ' WIB' : '-' }}</div>
                                         </td>
-                                        <!-- KOLOM TITIK LOKASI DENGAN RADIUS AWAL ANDA -->
                                         <td class="px-5 py-3">
                                             <div class="text-xs space-y-1.5">
-                                                <!-- Masuk (In) -->
                                                 <div>
                                                     <span class="font-semibold text-emerald-600">In:</span> 
                                                     @if($prs->latitude_masuk && $prs->longitude_masuk)
@@ -246,7 +250,6 @@
                                                         @elseif($prs->status_radius_masuk)
                                                             <span class="bg-rose-100 text-rose-700 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">Luar Radius</span>
                                                         @else
-                                                            <!-- Fallback jika nilai kosong -->
                                                             <span class="bg-gray-100 text-gray-500 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">Tidak Terdeteksi</span>
                                                         @endif
                                                     @else
@@ -254,7 +257,6 @@
                                                     @endif
                                                 </div>
 
-                                                <!-- Pulang (Out) -->
                                                 <div>
                                                     <span class="font-semibold text-rose-500">Out:</span> 
                                                     @if(isset($prs->latitude_pulang) && $prs->latitude_pulang)
@@ -274,7 +276,6 @@
                                                         @elseif(isset($prs->status_radius_pulang) && $prs->status_radius_pulang)
                                                             <span class="bg-rose-100 text-rose-700 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">Luar Radius</span>
                                                         @else
-                                                            <!-- Fallback jika nilai kosong -->
                                                             <span class="bg-gray-100 text-gray-500 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">Tidak Terdeteksi</span>
                                                         @endif
                                                     @else
