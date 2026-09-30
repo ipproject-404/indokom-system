@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard HRD - Sistem Presensi & Kinerja</title>
+    <title>Dashboard HRD - Indokom System</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -27,13 +27,15 @@
          SIDEBAR
     ========================== -->
     <aside id="sidebar" class="bg-white border-r border-gray-200 flex flex-col w-[260px] shrink-0">
+        
+        <!-- ========== BRANDING / LOGO ========== -->
         <div class="p-4 border-b border-gray-200">
             <div class="flex items-center">
                 <div class="bg-blue-600 text-white rounded-lg flex items-center justify-center mr-3 w-[42px] h-[42px] shrink-0">
-                    <i class="bi bi-person-badge-fill text-xl"></i>
+                    <i class="bi bi-building-fill text-xl"></i>
                 </div>
                 <div>
-                    <div class="font-bold text-blue-600">Portal HRD</div>
+                    <div class="font-bold text-blue-600">Indokom System</div>
                     <div class="text-xs text-gray-500">Presensi & Kinerja</div>
                 </div>
             </div>
@@ -94,8 +96,7 @@
             </form>
         </div>
 
-        <!-- ========== PERUBAHAN DI SINI ========== -->
-        <!-- Info User: Nama Asli + Jabatan + Departemen (Tanpa Role) -->
+        <!-- ========== INFO USER: NAMA + JABATAN + DEPARTEMEN ========== -->
         @php
             $userKaryawan = Auth::user()->karyawan ?? null;
             $namaTampil = $userKaryawan->nama_lengkap ?? (Auth::user()->name ?? '-');
@@ -117,7 +118,6 @@
                 </div>
             </div>
         </div>
-        <!-- ========== AKHIR PERUBAHAN ========== -->
     </aside>
 
     <!-- =========================
