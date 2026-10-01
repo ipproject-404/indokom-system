@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambah Karyawan - HRD</title>
+    <title>Tambah Karyawan - Indokom System</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // Fungsi pembatas input agar hanya bisa mengetik angka
         function hanyaAngka(evt) {
             var charCode = (evt.which) ? evt.which : event.keyCode;
             if (charCode > 31 && (charCode < 48 || charCode > 57))
@@ -20,17 +19,15 @@
 
 <div class="flex min-h-screen bg-gray-50">
 
-    <!-- =========================
-         SIDEBAR (Disalin dari Dashboard)
-    ========================== -->
-    <aside id="sidebar" class="bg-white border-r border-gray-200 flex flex-col w-[260px] shrink-0">
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="bg-white border-r border-gray-200 flex flex-col w-[260px] shrink-0 sticky top-0 h-screen">
         <div class="p-4 border-b border-gray-200">
             <div class="flex items-center">
                 <div class="bg-blue-600 text-white rounded-lg flex items-center justify-center mr-3 w-[42px] h-[42px] shrink-0">
-                    <i class="bi bi-person-badge-fill text-xl"></i>
+                    <i class="bi bi-building-fill text-xl"></i>
                 </div>
                 <div>
-                    <div class="font-bold text-blue-600">Portal HRD</div>
+                    <div class="font-bold text-blue-600">Indokom System</div>
                     <div class="text-xs text-gray-500">Presensi & Kinerja</div>
                 </div>
             </div>
@@ -48,7 +45,6 @@
                 <i class="bi bi-people-fill mr-3"></i>
                 <span class="text-sm font-medium">Daftar Karyawan</span>
             </a>
-            <!-- Menu Tambah Karyawan Aktif -->
             <a href="{{ route('karyawan.create') }}" class="flex items-center bg-blue-600 text-white rounded-lg px-4 py-2.5 mb-1 transition-colors">
                 <i class="bi bi-person-plus-fill mr-3"></i>
                 <span class="text-sm font-medium">Tambah Karyawan</span>
@@ -91,8 +87,6 @@
             </form>
         </div>
 
-        <!-- ========== PERUBAHAN DI SINI ========== -->
-        <!-- Info User: Nama Asli + Jabatan + Departemen (Tanpa Role) -->
         @php
             $userKaryawan = Auth::user()->karyawan ?? null;
             $namaTampil = $userKaryawan->nama_lengkap ?? (Auth::user()->name ?? '-');
@@ -105,22 +99,15 @@
                     {{ strtoupper(substr($namaTampil, 0, 2)) }}
                 </div>
                 <div class="overflow-hidden">
-                    <div class="font-bold text-sm text-gray-800 truncate" title="{{ $namaTampil }}">
-                        {{ $namaTampil }}
-                    </div>
-                    <div class="text-xs text-blue-600 font-semibold truncate" title="{{ $jabatanTampil }} • {{ $departemenTampil }}">
-                        {{ $jabatanTampil }} &bull; {{ $departemenTampil }}
-                    </div>
+                    <div class="font-bold text-sm text-gray-800 truncate">{{ $namaTampil }}</div>
+                    <div class="text-xs text-blue-600 font-semibold truncate">{{ $jabatanTampil }} &bull; {{ $departemenTampil }}</div>
                 </div>
             </div>
         </div>
     </aside>
 
-    <!-- =========================
-         MAIN CONTENT
-    ========================== -->
+    <!-- MAIN CONTENT -->
     <main class="grow flex flex-col min-w-0">
-        <!-- HEADER -->
         <nav class="bg-white border-b border-gray-200 px-6 py-4 flex items-center sticky top-0 z-10">
             <a href="{{ route('karyawan.index') }}" class="text-gray-500 hover:bg-gray-100 p-2 rounded-lg mr-3 transition-colors">
                 <i class="bi bi-arrow-left text-xl"></i>
@@ -131,11 +118,9 @@
             </div>
         </nav>
 
-        <!-- CONTENT BODY -->
         <div class="p-6 grow overflow-y-auto">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 max-w-3xl mx-auto">
-                
-                <!-- Tampilkan Error Validasi -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 max-w-4xl mx-auto">
+
                 @if ($errors->any())
                     <div class="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-lg mb-6 text-sm">
                         <ul class="list-disc pl-5 space-y-1">
@@ -146,23 +131,31 @@
                     </div>
                 @endif
 
-                <form action="{{ route('karyawan.store') }}" method="POST" class="space-y-4">
+                <form action="{{ route('karyawan.store') }}" method="POST" class="space-y-5">
                     @csrf
-                    
+
+                    <!-- SEKSI 1: DATA PRIBADI -->
+                    <div class="flex items-center gap-2 pb-2 border-b border-gray-100">
+                        <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-sm">
+                            <i class="bi bi-person-lines-fill"></i>
+                        </div>
+                        <h3 class="font-bold text-gray-800">Data Pribadi</h3>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap <span class="text-rose-500">*</span></label>
                             <input type="text" name="nama_lengkap" value="{{ old('nama_lengkap') }}" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none" required>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">NIK KTP <span class="text-xs text-gray-400">(Wajib 16 Digit Angka)</span></label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">NIK KTP <span class="text-xs text-gray-400">(16 digit)</span></label>
                             <input type="text" name="nik_ktp" value="{{ old('nik_ktp') }}" maxlength="16" minlength="16" onkeypress="return hanyaAngka(event)" placeholder="Contoh: 187103..." class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none" required>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">NIK Kerja (Perusahaan)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">NIK Kerja <span class="text-rose-500">*</span></label>
                             <input type="text" name="nik_kerja" value="{{ old('nik_kerja') }}" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none" required>
                         </div>
                         <div>
@@ -196,52 +189,95 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">No. Handphone <span class="text-xs text-gray-400">(Hanya Angka)</span></label>
                             <input type="text" name="no_hp" value="{{ old('no_hp') }}" onkeypress="return hanyaAngka(event)" placeholder="Contoh: 08123456789" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none" required>
                         </div>
-                        
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Pendidikan Terakhir & Institusi</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <select name="tingkat_pendidikan" class="border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white text-sm" required>
-                                    <option value="">Pilih Jenjang</option>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Pendidikan Terakhir</label>
+                            <div class="flex gap-2">
+                                <select name="tingkat_pendidikan" required class="w-32 border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white text-sm">
+                                    <option value="">Jenjang</option>
                                     <option value="SD" {{ old('tingkat_pendidikan') == 'SD' ? 'selected' : '' }}>SD</option>
                                     <option value="SMP" {{ old('tingkat_pendidikan') == 'SMP' ? 'selected' : '' }}>SMP</option>
-                                    <option value="SMA/K" {{ old('tingkat_pendidikan') == 'SMA/K' ? 'selected' : '' }}>SMA/SMK</option>
+                                    <option value="SMA/SMK" {{ old('tingkat_pendidikan') == 'SMA/SMK' ? 'selected' : '' }}>SMA/SMK</option>
                                     <option value="D3" {{ old('tingkat_pendidikan') == 'D3' ? 'selected' : '' }}>D3</option>
                                     <option value="S1" {{ old('tingkat_pendidikan') == 'S1' ? 'selected' : '' }}>S1</option>
                                     <option value="S2" {{ old('tingkat_pendidikan') == 'S2' ? 'selected' : '' }}>S2</option>
                                     <option value="S3" {{ old('tingkat_pendidikan') == 'S3' ? 'selected' : '' }}>S3</option>
                                 </select>
-                                <input type="text" name="nama_sekolah" value="{{ old('nama_sekolah') }}" placeholder="Misal: Unila / SMAN 1" class="border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-600 outline-none">
+                                <input type="text" name="nama_sekolah" value="{{ old('nama_sekolah') }}"
+                                       placeholder="Nama Sekolah / Institusi"
+                                       class="flex-1 border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none text-sm">
                             </div>
+                            <p class="text-[11px] text-gray-400 mt-1"><i class="bi bi-info-circle"></i> Hasil digabung, contoh: <strong>S1-Unila</strong></p>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-gray-100 pt-4 mt-4">
+                    <!-- SEKSI 2: DATA KEPEGAWAIAN -->
+                    <div class="flex items-center gap-2 pb-2 border-b border-gray-100 pt-4">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm">
+                            <i class="bi bi-briefcase-fill"></i>
+                        </div>
+                        <h3 class="font-bold text-gray-800">Data Kepegawaian</h3>
+                    </div>
+
+                    <!-- Perusahaan & Tipe Karyawan -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Departemen</label>
-                            <!-- Dropdown Departemen dengan ID untuk trigger AJAX -->
-                            <select name="departemen_id" id="departemen_id" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white" required>
-                                <option value="">Pilih Departemen...</option>
-                                @foreach($departemens as $dept)
-                                    <option value="{{ $dept->id }}" {{ old('departemen_id') == $dept->id ? 'selected' : '' }}>{{ $dept->nama_departemen }}</option>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Perusahaan <span class="text-rose-500">*</span></label>
+                            <select name="perusahaan_id" id="perusahaan_id" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white" required>
+                                <option value="">Pilih Perusahaan...</option>
+                                @foreach($perusahaans as $pt)
+                                    <option value="{{ $pt->id }}" {{ old('perusahaan_id') == $pt->id ? 'selected' : '' }}>
+                                        {{ $pt->kode }} - {{ $pt->nama_perusahaan }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
-                            <!-- Dropdown Jabatan kosong, diisi otomatis lewat Javascript -->
-                            <select name="jabatan_id" id="jabatan_id" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white" required>
-                                <option value="">Pilih Jabatan...</option>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipe Karyawan <span class="text-rose-500">*</span></label>
+                            <select name="tipe_karyawan_id" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white" required>
+                                <option value="">Pilih Tipe Karyawan...</option>
+                                @foreach($tipeKaryawans as $tk)
+                                    <option value="{{ $tk->id }}" {{ old('tipe_karyawan_id') == $tk->id ? 'selected' : '' }}>
+                                        {{ $tk->nama }} ({{ $tk->dasar_absensi }} - {{ $tk->periode_gaji }})
+                                    </option>
+                                @endforeach
                             </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Masuk</label>
-                            <input type="date" name="tanggal_masuk" value="{{ old('tanggal_masuk') }}" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none" required>
                         </div>
                     </div>
 
-                    <div class="pt-4 flex justify-end">
-                        <button type="submit" class="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm">
-                            <i class="bi bi-save mr-1"></i> Simpan Data
+                    <!-- Divisi → Departemen → Jabatan -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Divisi <span class="text-rose-500">*</span></label>
+                            <select name="divisi_filter" id="divisi_id" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed" required disabled>
+                                <option value="">Pilih Perusahaan dahulu...</option>
+                            </select>
+                            <p class="text-[11px] text-gray-400 mt-1"><i class="bi bi-info-circle"></i> Untuk filter departemen</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Departemen <span class="text-rose-500">*</span></label>
+                            <select name="departemen_id" id="departemen_id" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed" required disabled>
+                                <option value="">Pilih Divisi dahulu...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Jabatan <span class="text-rose-500">*</span></label>
+                            <select name="jabatan_id" id="jabatan_id" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed" required disabled>
+                                <option value="">Pilih Departemen dahulu...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Tanggal Masuk -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Masuk <span class="text-rose-500">*</span></label>
+                            <input type="date" name="tanggal_masuk" value="{{ old('tanggal_masuk', date('Y-m-d')) }}" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none" required>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex justify-end border-t border-gray-100">
+                        <button type="submit" class="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2">
+                            <i class="bi bi-save"></i> Simpan Data Karyawan
                         </button>
                     </div>
                 </form>
@@ -250,41 +286,136 @@
     </main>
 </div>
 
-<!-- Script AJAX untuk Dependent Dropdown Laravel -->
+<!-- SCRIPT AJAX CASCADING -->
 <script>
-    document.getElementById('departemen_id').addEventListener('change', function() {
-        let departemenId = this.value;
-        let jabatanSelect = document.getElementById('jabatan_id');
-        
-        // Kosongkan opsi sebelumnya setiap kali departemen diubah
-        jabatanSelect.innerHTML = '<option value="">Pilih Jabatan...</option>';
+    // ==========================================
+    // 1. Perusahaan → Divisi
+    // ==========================================
+    document.getElementById('perusahaan_id').addEventListener('change', function() {
+        let ptId = this.value;
+        let divisiSelect = document.getElementById('divisi_id');
+        let deptSelect = document.getElementById('departemen_id');
+        let jabSelect = document.getElementById('jabatan_id');
 
-        if (departemenId) {
-            // Panggil route Laravel
-            fetch('/get-jabatan/' + departemenId)
-                .then(response => response.json())
+        divisiSelect.innerHTML = '<option value="">Loading...</option>';
+        divisiSelect.disabled = true;
+        deptSelect.innerHTML = '<option value="">Pilih Divisi dahulu...</option>';
+        deptSelect.disabled = true;
+        jabSelect.innerHTML = '<option value="">Pilih Departemen dahulu...</option>';
+        jabSelect.disabled = true;
+
+        if (ptId) {
+            fetch('/get-divisi/' + ptId)
+                .then(r => r.json())
                 .then(data => {
-                    // Tambahkan data JSON ke dalam elemen select
-                    data.forEach(jabatan => {
-                        let option = document.createElement('option');
-                        option.value = jabatan.id;
-                        option.textContent = jabatan.nama_jabatan;
-                        
-                        // Jika ada old value (misal gagal validasi), pilih kembali
-                        if("{{ old('jabatan_id') }}" == jabatan.id){
-                            option.selected = true;
-                        }
-                        
-                        jabatanSelect.appendChild(option);
+                    divisiSelect.innerHTML = '<option value="">Pilih Divisi...</option>';
+                    divisiSelect.disabled = false;
+                    data.forEach(d => {
+                        let opt = document.createElement('option');
+                        opt.value = d.id;
+                        opt.textContent = d.nama_divisi;
+                        divisiSelect.appendChild(opt);
                     });
                 })
-                .catch(error => console.error('Error fetching data:', error));
+                .catch(() => {
+                    divisiSelect.innerHTML = '<option value="">Gagal memuat</option>';
+                });
+        } else {
+            divisiSelect.innerHTML = '<option value="">Pilih Perusahaan dahulu...</option>';
         }
     });
 
-    // Trigger change event jika ada old value saat halaman dimuat (setelah validasi gagal)
-    @if(old('departemen_id'))
-        document.getElementById('departemen_id').dispatchEvent(new Event('change'));
+    // ==========================================
+    // 2. Divisi → Departemen
+    // ==========================================
+    document.getElementById('divisi_id').addEventListener('change', function() {
+        let divisiId = this.value;
+        let deptSelect = document.getElementById('departemen_id');
+        let jabSelect = document.getElementById('jabatan_id');
+
+        deptSelect.innerHTML = '<option value="">Loading...</option>';
+        deptSelect.disabled = true;
+        jabSelect.innerHTML = '<option value="">Pilih Departemen dahulu...</option>';
+        jabSelect.disabled = true;
+
+        if (divisiId) {
+            fetch('/get-departemen/' + divisiId)
+                .then(r => r.json())
+                .then(data => {
+                    deptSelect.innerHTML = '<option value="">Pilih Departemen...</option>';
+                    deptSelect.disabled = false;
+                    data.forEach(d => {
+                        let opt = document.createElement('option');
+                        opt.value = d.id;
+                        opt.textContent = d.nama_departemen;
+                        deptSelect.appendChild(opt);
+                    });
+                })
+                .catch(() => {
+                    deptSelect.innerHTML = '<option value="">Gagal memuat</option>';
+                });
+        } else {
+            deptSelect.innerHTML = '<option value="">Pilih Divisi dahulu...</option>';
+        }
+    });
+
+    // ==========================================
+    // 3. Departemen → Jabatan
+    // ==========================================
+    document.getElementById('departemen_id').addEventListener('change', function() {
+        let deptId = this.value;
+        let jabSelect = document.getElementById('jabatan_id');
+
+        jabSelect.innerHTML = '<option value="">Loading...</option>';
+        jabSelect.disabled = true;
+
+        if (deptId) {
+            fetch('/get-jabatan/' + deptId)
+                .then(r => r.json())
+                .then(data => {
+                    jabSelect.innerHTML = '<option value="">Pilih Jabatan...</option>';
+                    jabSelect.disabled = false;
+                    data.forEach(j => {
+                        let opt = document.createElement('option');
+                        opt.value = j.id;
+                        opt.textContent = j.nama_jabatan;
+                        if("{{ old('jabatan_id') }}" == j.id) opt.selected = true;
+                        jabSelect.appendChild(opt);
+                    });
+                })
+                .catch(() => {
+                    jabSelect.innerHTML = '<option value="">Gagal memuat</option>';
+                });
+        } else {
+            jabSelect.innerHTML = '<option value="">Pilih Departemen dahulu...</option>';
+        }
+    });
+
+    // ==========================================
+    // Trigger otomatis jika ada old value
+    // ==========================================
+    @if(old('perusahaan_id'))
+        document.getElementById('perusahaan_id').dispatchEvent(new Event('change'));
+        setTimeout(() => {
+            @if(old('divisi_filter') || old('divisi_id'))
+                let divisiOld = "{{ old('divisi_filter') ?? old('divisi_id') }}";
+                let divisiSel = document.getElementById('divisi_id');
+                if (divisiSel && divisiOld) {
+                    divisiSel.value = divisiOld;
+                    divisiSel.dispatchEvent(new Event('change'));
+
+                    setTimeout(() => {
+                        @if(old('departemen_id'))
+                            let deptSel = document.getElementById('departemen_id');
+                            if (deptSel) {
+                                deptSel.value = "{{ old('departemen_id') }}";
+                                deptSel.dispatchEvent(new Event('change'));
+                            }
+                        @endif
+                    }, 400);
+                }
+            @endif
+        }, 500);
     @endif
 </script>
 </body>
