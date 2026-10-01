@@ -7,10 +7,34 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        function bukaModalEditDepartemen(id, nama) {
+        const karyawanPerDepartemen = @json($karyawanPerDepartemen);
+
+        function bukaModalEditDepartemen(id, nama, divisiId, kepalaId) {
             document.getElementById('edit_dept_id').value = id;
             document.getElementById('edit_nama_departemen').value = nama;
+            document.getElementById('edit_divisi_id').value = divisiId ?? '';
             document.getElementById('formEditDepartemen').action = "/hrd/departemen/" + id;
+
+            // Opsi kepala bagian diisi ulang tiap kali modal dibuka, sesuai
+            // karyawan yang benar-benar ada di departemen ini.
+            const selectKepala = document.getElementById('edit_kepala_karyawan_id');
+            selectKepala.innerHTML = '<option value="">-- Belum ada kepala ditunjuk --</option>';
+            const daftarKaryawan = karyawanPerDepartemen[id] || [];
+            daftarKaryawan.forEach(function (k) {
+                const opt = document.createElement('option');
+                opt.value = k.id;
+                opt.textContent = k.nama_lengkap;
+                if (kepalaId && String(k.id) === String(kepalaId)) opt.selected = true;
+                selectKepala.appendChild(opt);
+            });
+            if (daftarKaryawan.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = 'Belum ada karyawan di departemen ini';
+                opt.disabled = true;
+                selectKepala.appendChild(opt);
+            }
+
             document.getElementById('modalEditDepartemen').classList.remove('hidden');
         }
         function tutupModalEditDepartemen() {
@@ -182,12 +206,20 @@
                         <h3 class="font-bold text-gray-800 text-sm mb-3 flex items-center">
                             <i class="bi bi-plus-circle-fill text-blue-600 mr-2"></i> Tambah Departemen Baru
                         </h3>
-                        <form action="{{ route('departemen.store') }}" method="POST" class="flex gap-2">
+                        <form action="{{ route('departemen.store') }}" method="POST" class="space-y-2">
                             @csrf
-                            <input type="text" name="nama_departemen" placeholder="Nama Departemen..." class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none" required>
-                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm shrink-0">
-                                Simpan
-                            </button>
+                            <select name="divisi_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none bg-white" required>
+                                <option value="">-- Pilih Divisi Induk --</option>
+                                @foreach($divisis as $div)
+                                    <option value="{{ $div->id }}">{{ $div->nama_divisi }}</option>
+                                @endforeach
+                            </select>
+                            <div class="flex gap-2">
+                                <input type="text" name="nama_departemen" placeholder="Nama Departemen..." class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none" required>
+                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm shrink-0">
+                                    Simpan
+                                </button>
+                            </div>
                         </form>
                     </div>
 
@@ -231,7 +263,17 @@
                             <div class="bg-blue-600 text-white px-5 py-3 flex justify-between items-center">
                                 <div class="flex items-center">
                                     <i class="bi bi-building-fill text-lg mr-2"></i>
-                                    <span class="font-bold tracking-wide uppercase text-sm">{{ $dept->nama_departemen }}</span>
+                                    <div>
+                                        <span class="font-bold tracking-wide uppercase text-sm">{{ $dept->nama_departemen }}</span>
+                                        <div class="text-[10px] text-blue-100 font-normal normal-case flex items-center gap-2 mt-0.5">
+                                            <span><i class="bi bi-diagram-2 mr-1"></i>{{ $dept->divisi->nama_divisi ?? '-' }}</span>
+                                            <span>&bull;</span>
+                                            <span>
+                                                <i class="bi bi-person-badge mr-1"></i>
+                                                Kepala: {{ $dept->kepalaKaryawan->nama_lengkap ?? 'Belum ditunjuk' }}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <span class="bg-blue-700 text-blue-100 text-xs px-2.5 py-0.5 rounded-full font-semibold mr-2">
@@ -239,7 +281,7 @@
                                     </span>
                                     
                                     <!-- Tombol Edit Departemen -->
-                                    <button onclick="bukaModalEditDepartemen('{{ $dept->id }}', '{{ $dept->nama_departemen }}')" class="text-blue-200 hover:text-white transition-colors p-1" title="Edit Departemen">
+                                    <button onclick="bukaModalEditDepartemen('{{ $dept->id }}', '{{ $dept->nama_departemen }}', '{{ $dept->divisi_id }}', '{{ $dept->kepala_karyawan_id }}')" class="text-blue-200 hover:text-white transition-colors p-1" title="Edit Departemen">
                                         <i class="bi bi-pencil-square text-base"></i>
                                     </button>
 
@@ -325,6 +367,21 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Nama Departemen</label>
                 <input type="text" name="nama_departemen" id="edit_nama_departemen" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none" required>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Divisi Induk</label>
+                <select name="divisi_id" id="edit_divisi_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none bg-white" required>
+                    @foreach($divisis as $div)
+                        <option value="{{ $div->id }}">{{ $div->nama_divisi }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Kepala Bagian</label>
+                <select name="kepala_karyawan_id" id="edit_kepala_karyawan_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none bg-white">
+                    <option value="">-- Belum ada kepala ditunjuk --</option>
+                </select>
+                <p class="text-xs text-gray-400 mt-1">Hanya karyawan yang sudah ada di departemen ini yang muncul di daftar.</p>
             </div>
             <div class="flex justify-end gap-2">
                 <button type="button" onclick="tutupModalEditDepartemen()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors">
