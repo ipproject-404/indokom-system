@@ -51,6 +51,7 @@
             'tanggal' => $hari['tanggal']->translatedFormat('l, d F Y'),
             'keterangan' => $hari['keterangan'] ?? null,
             'jam_standar' => $hari['jam_standar'] ?? null,
+            'nama_shift' => $hari['nama_shift'] ?? null,
             'terlambat' => $teksMenit($hari['terlambat_menit'] ?? null),
             'pulang_awal' => $teksMenit($hari['pulang_awal_menit'] ?? null),
             'status' => $info['label'],
@@ -264,10 +265,17 @@
                 <div class="angka" style="color:#ef4444;">{{ $ringkasan['tidak_hadir'] }}</div>
                 <div class="label">Tidak Hadir</div>
             </div>
-            <div class="kotak" style="background:#fffbeb;">
-                <div class="angka" style="color:#f59e0b;">{{ $ringkasan['terlambat'] }}</div>
-                <div class="label">Terlambat</div>
-            </div>
+            @if ($dasarAbsensi === 'jam')
+                <div class="kotak" style="background:#eff6ff;">
+                    <div class="angka" style="color:#2563eb;">{{ $ringkasan['total_jam_kerja'] }}</div>
+                    <div class="label">Jam Kerja</div>
+                </div>
+            @else
+                <div class="kotak" style="background:#fffbeb;">
+                    <div class="angka" style="color:#f59e0b;">{{ $ringkasan['terlambat'] }}</div>
+                    <div class="label">Terlambat</div>
+                </div>
+            @endif
         </div>
 
         <div class="modern-card p-3 mb-3">
@@ -477,12 +485,21 @@
                     <div class="icon-box" style="background:#fee2e2; color:#ef4444;"><i class="bi bi-record-circle"></i></div>
                 </div>
             </div>
-            <div class="col-4">
-                <div class="stat-card">
-                    <div><div class="label">Terlambat</div><div class="value">{{ $ringkasan['terlambat'] }}</div></div>
-                    <div class="icon-box" style="background:#fef3c7; color:#f59e0b;"><i class="bi bi-clock-fill"></i></div>
+            @if ($dasarAbsensi === 'jam')
+                <div class="col-4">
+                    <div class="stat-card">
+                        <div><div class="label">Total Jam Kerja (bulan ini)</div><div class="value">{{ $ringkasan['total_jam_kerja'] }} jam</div></div>
+                        <div class="icon-box" style="background:#dbeafe; color:#2563eb;"><i class="bi bi-hourglass-split"></i></div>
+                    </div>
                 </div>
-            </div>
+            @else
+                <div class="col-4">
+                    <div class="stat-card">
+                        <div><div class="label">Terlambat</div><div class="value">{{ $ringkasan['terlambat'] }}</div></div>
+                        <div class="icon-box" style="background:#fef3c7; color:#f59e0b;"><i class="bi bi-clock-fill"></i></div>
+                    </div>
+                </div>
+            @endif
         </div>
 
         <div class="panel">
@@ -591,7 +608,7 @@
                         <i class="bi ${d.icon}"></i> ${esc(d.status)}
                     </span>
                     ${d.keterangan ? '<div class="text-muted mt-1" style="font-size:.78rem;">' + esc(d.keterangan) + '</div>' : ''}
-                    ${d.jam_standar ? '<div class="text-muted mt-1" style="font-size:.78rem;">Jam kerja standar ' + esc(d.jam_standar) + '</div>' : ''}
+                    ${d.jam_standar ? '<div class="text-muted mt-1" style="font-size:.78rem;">Shift ' + esc(d.nama_shift || '') + ' &middot; ' + esc(d.jam_standar) + '</div>' : ''}
                 </div>`;
 
             if (!d.ada) {

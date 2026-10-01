@@ -449,7 +449,7 @@
 
     <aside class="desktop-sidebar">
         <div class="brand">
-            <div><i class="bi bi-qr-code-scan me-1"></i> Presensi App</div>
+            <div><i class="bi bi-qr-code-scan me-1"></i> Indokom Group</div>
             <small>Absensi &amp; Aktivitas Karyawan</small>
         </div>
 
