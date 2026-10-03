@@ -389,4 +389,23 @@ class KaryawanController extends Controller
 
         return view('karyawan.qr_massal', compact('karyawans'));
     }
+
+        /**
+     * Reset password karyawan ke default (passwor123)
+     */
+    public function resetPassword($id)
+    {
+        $karyawan = Karyawan::findOrFail($id);
+        $akun = User::where('karyawan_id', $id)->first();
+
+        if (!$akun) {
+            return back()->with('error', 'Akun login tidak ditemukan untuk karyawan ini.');
+        }
+
+        $akun->update([
+            'password' => Hash::make('passwor123'),
+        ]);
+
+        return back()->with('success', 'Password ' . $karyawan->nama_lengkap . ' berhasil direset ke "passwor123".');
+    }
 }

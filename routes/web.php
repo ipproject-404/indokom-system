@@ -50,6 +50,7 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::get('/hrd/karyawan/{id}/detail', [KaryawanController::class, 'show'])->name('karyawan.show');
     Route::post('/hrd/karyawan', [KaryawanController::class, 'store'])->name('karyawan.store');
     Route::put('/hrd/karyawan/{id}', [KaryawanController::class, 'update'])->name('karyawan.update');
+    Route::post('/hrd/karyawan/{id}/reset-password', [KaryawanController::class, 'resetPassword'])->name('karyawan.reset-password');
 
     // ⭐ Route AJAX Cascading Dropdown ⭐
     Route::get('/get-divisi/{perusahaan_id}', [KaryawanController::class, 'getDivisi'])->name('get.divisi');
