@@ -18,9 +18,7 @@ class KaryawanController extends Controller
 {
     public function index(Request $request)
     {
-        // ==========================================
         // EAGER LOAD RELASI
-        // ==========================================
         $query = Karyawan::with([
             'jabatan',
             'departemen.divisi',
@@ -28,9 +26,7 @@ class KaryawanController extends Controller
             'tipeKaryawan',
         ]);
 
-        // ==========================================
-        // SEARCH (Nama / NIK Kerja / NIK KTP)
-        // ==========================================
+        // SEARCH
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -40,53 +36,39 @@ class KaryawanController extends Controller
             });
         }
 
-        // ==========================================
         // FILTER PERUSAHAAN
-        // ==========================================
         if ($request->filled('perusahaan')) {
             $query->where('perusahaan_id', $request->perusahaan);
         }
 
-        // ==========================================
-        // FILTER DIVISI (via relasi departemen)
-        // ==========================================
+        // FILTER DIVISI
         if ($request->filled('divisi')) {
             $query->whereHas('departemen', function ($q) use ($request) {
                 $q->where('divisi_id', $request->divisi);
             });
         }
 
-        // ==========================================
         // FILTER DEPARTEMEN
-        // ==========================================
         if ($request->filled('departemen')) {
             $query->where('departemen_id', $request->departemen);
         }
 
-        // ==========================================
         // FILTER JABATAN
-        // ==========================================
         if ($request->filled('jabatan')) {
             $query->where('jabatan_id', $request->jabatan);
         }
 
-        // ==========================================
         // FILTER JENIS KELAMIN
-        // ==========================================
         if ($request->filled('jenis_kelamin')) {
             $query->where('jenis_kelamin', $request->jenis_kelamin);
         }
 
-        // ==========================================
-        // FILTER PENDIDIKAN (LIKE karena disimpan sebagai "S1-Unila")
-        // ==========================================
+        // FILTER PENDIDIKAN
         if ($request->filled('pendidikan')) {
             $query->where('pendidikan', 'like', $request->pendidikan . '%');
         }
 
-        // ==========================================
-        // FILTER UMUR (range min-max)
-        // ==========================================
+        // FILTER UMUR
         if ($request->filled('umur_min')) {
             $query->whereRaw(
                 "TIMESTAMPDIFF(YEAR, tanggal_lahir, CURDATE()) >= ?",
@@ -100,16 +82,12 @@ class KaryawanController extends Controller
             );
         }
 
-        // ==========================================
         // FILTER STATUS
-        // ==========================================
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // ==========================================
-        // EXPORT EXCEL (mengikuti filter yang aktif)
-        // ==========================================
+        // EXPORT EXCEL
         if ($request->has('export') && $request->export == 'excel') {
             $karyawans = $query->orderBy('nama_lengkap', 'asc')->get();
 
@@ -161,16 +139,12 @@ class KaryawanController extends Controller
             return response()->stream($callback, 200, $headers);
         }
 
-        // ==========================================
-        // PAGINATION (15 per halaman) + withQueryString
-        // ==========================================
+        // PAGINATION
         $karyawans = $query->orderBy('nama_lengkap', 'asc')
                            ->paginate(15)
                            ->withQueryString();
 
-        // ==========================================
         // DATA DROPDOWN FILTER
-        // ==========================================
         $divisis = Divisi::where('status', 'aktif')->orderBy('nama_divisi')->get();
         $departemens = Departemen::orderBy('nama_departemen')->get();
         $jabatans = Jabatan::orderBy('nama_jabatan')->get();
@@ -217,7 +191,7 @@ class KaryawanController extends Controller
             'tanggal_masuk' => 'required|date',
         ]);
 
-        // Gabungkan pendidikan: "S1-Unila"
+        // Gabungkan pendidikan
         $tingkat = $request->tingkat_pendidikan;
         $namaSekolah = trim($request->nama_sekolah ?? '');
         $pendidikanGabung = $namaSekolah ? "{$tingkat}-{$namaSekolah}" : $tingkat;
@@ -268,6 +242,7 @@ class KaryawanController extends Controller
             'departemen.divisi',
             'perusahaan',
             'tipeKaryawan',
+            'shift',
         ])->findOrFail($id);
 
         $akun = User::where('karyawan_id', $id)->first();
@@ -304,6 +279,32 @@ class KaryawanController extends Controller
     {
         $karyawan = Karyawan::findOrFail($id);
 
+        // ==========================================
+        // VALIDASI (dengan unique kecuali diri sendiri)
+        // ==========================================
+        $request->validate([
+            'nik_ktp' => 'required|digits:16|unique:karyawan,nik_ktp,' . $id,
+            'nik_kerja' => 'required|unique:karyawan,nik_kerja,' . $id,
+            'nama_lengkap' => 'required',
+            'tempat_lahir' => 'required',
+            'tanggal_lahir' => 'required|date',
+            'jenis_kelamin' => 'required',
+            'alamat' => 'required',
+            'no_hp' => 'required|numeric',
+            'tingkat_pendidikan' => 'nullable',
+            'nama_sekolah' => 'nullable|string|max:255',
+            'perusahaan_id' => 'required|exists:perusahaan,id',
+            'tipe_karyawan_id' => 'required|exists:tipe_karyawan,id',
+            'departemen_id' => 'required|exists:departemen,id',
+            'jabatan_id' => 'required|exists:jabatan,id',
+            'tanggal_masuk' => 'required|date',
+            'tanggal_keluar' => 'nullable|date',
+            'status' => 'required|in:aktif,nonaktif',
+        ]);
+
+        // ==========================================
+        // GABUNGKAN PENDIDIKAN
+        // ==========================================
         $pendidikanGabung = $karyawan->pendidikan;
         if ($request->filled('tingkat_pendidikan')) {
             $namaSekolah = trim($request->nama_sekolah ?? '');
@@ -312,21 +313,37 @@ class KaryawanController extends Controller
                 : $request->tingkat_pendidikan;
         }
 
+        // ==========================================
+        // UPDATE KARYAWAN (LENGKAP)
+        // ==========================================
         $karyawan->update([
             'nik_ktp' => $request->nik_ktp,
             'nik_kerja' => $request->nik_kerja,
             'nama_lengkap' => $request->nama_lengkap,
+            'tempat_lahir' => $request->tempat_lahir,
+            'tanggal_lahir' => $request->tanggal_lahir,
             'jenis_kelamin' => $request->jenis_kelamin,
             'alamat' => $request->alamat,
+            'no_hp' => $request->no_hp,
             'pendidikan' => $pendidikanGabung,
-            'perusahaan_id' => $request->perusahaan_id ?? $karyawan->perusahaan_id,
-            'tipe_karyawan_id' => $request->tipe_karyawan_id ?? $karyawan->tipe_karyawan_id,
-            'departemen_id' => $request->departemen_id ?? $karyawan->departemen_id,
-            'jabatan_id' => $request->jabatan_id ?? $karyawan->jabatan_id,
-            'status' => $request->status ?? $karyawan->status,
+            'perusahaan_id' => $request->perusahaan_id,
+            'tipe_karyawan_id' => $request->tipe_karyawan_id,
+            'departemen_id' => $request->departemen_id,
+            'jabatan_id' => $request->jabatan_id,
+            'tanggal_masuk' => $request->tanggal_masuk,
+            'tanggal_keluar' => $request->tanggal_keluar,
+            'status' => $request->status,
         ]);
 
-        return redirect()->route('karyawan.index')->with('success', 'Data Karyawan berhasil diperbarui!');
+        // Jika status berubah menjadi nonaktif, sinkronkan akun user juga
+        if ($request->status === 'nonaktif') {
+            User::where('karyawan_id', $id)->update(['status' => 'nonaktif']);
+        } elseif ($request->status === 'aktif') {
+            User::where('karyawan_id', $id)->update(['status' => 'aktif']);
+        }
+
+        return redirect()->route('karyawan.show', $karyawan->id)
+                         ->with('success', 'Data Karyawan berhasil diperbarui!');
     }
 
     // ==========================================
@@ -390,7 +407,7 @@ class KaryawanController extends Controller
         return view('karyawan.qr_massal', compact('karyawans'));
     }
 
-        /**
+    /**
      * Reset password karyawan ke default (passwor123)
      */
     public function resetPassword($id)
