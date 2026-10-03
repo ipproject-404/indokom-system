@@ -18,6 +18,9 @@ class KaryawanController extends Controller
 {
     public function index(Request $request)
     {
+        // ==========================================
+        // EAGER LOAD RELASI
+        // ==========================================
         $query = Karyawan::with([
             'jabatan',
             'departemen.divisi',
@@ -25,26 +28,90 @@ class KaryawanController extends Controller
             'tipeKaryawan',
         ]);
 
+        // ==========================================
+        // SEARCH (Nama / NIK Kerja / NIK KTP)
+        // ==========================================
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('nama_lengkap', 'like', "%{$search}%")
-                  ->orWhere('nik_kerja', 'like', "%{$search}%");
+                  ->orWhere('nik_kerja', 'like', "%{$search}%")
+                  ->orWhere('nik_ktp', 'like', "%{$search}%");
             });
         }
+
+        // ==========================================
+        // FILTER PERUSAHAAN
+        // ==========================================
+        if ($request->filled('perusahaan')) {
+            $query->where('perusahaan_id', $request->perusahaan);
+        }
+
+        // ==========================================
+        // FILTER DIVISI (via relasi departemen)
+        // ==========================================
+        if ($request->filled('divisi')) {
+            $query->whereHas('departemen', function ($q) use ($request) {
+                $q->where('divisi_id', $request->divisi);
+            });
+        }
+
+        // ==========================================
+        // FILTER DEPARTEMEN
+        // ==========================================
         if ($request->filled('departemen')) {
             $query->where('departemen_id', $request->departemen);
         }
+
+        // ==========================================
+        // FILTER JABATAN
+        // ==========================================
         if ($request->filled('jabatan')) {
             $query->where('jabatan_id', $request->jabatan);
         }
+
+        // ==========================================
+        // FILTER JENIS KELAMIN
+        // ==========================================
+        if ($request->filled('jenis_kelamin')) {
+            $query->where('jenis_kelamin', $request->jenis_kelamin);
+        }
+
+        // ==========================================
+        // FILTER PENDIDIKAN (LIKE karena disimpan sebagai "S1-Unila")
+        // ==========================================
+        if ($request->filled('pendidikan')) {
+            $query->where('pendidikan', 'like', $request->pendidikan . '%');
+        }
+
+        // ==========================================
+        // FILTER UMUR (range min-max)
+        // ==========================================
+        if ($request->filled('umur_min')) {
+            $query->whereRaw(
+                "TIMESTAMPDIFF(YEAR, tanggal_lahir, CURDATE()) >= ?",
+                [(int) $request->umur_min]
+            );
+        }
+        if ($request->filled('umur_max')) {
+            $query->whereRaw(
+                "TIMESTAMPDIFF(YEAR, tanggal_lahir, CURDATE()) <= ?",
+                [(int) $request->umur_max]
+            );
+        }
+
+        // ==========================================
+        // FILTER STATUS
+        // ==========================================
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // EXPORT EXCEL
+        // ==========================================
+        // EXPORT EXCEL (mengikuti filter yang aktif)
+        // ==========================================
         if ($request->has('export') && $request->export == 'excel') {
-            $karyawans = $query->orderBy('created_at', 'desc')->get();
+            $karyawans = $query->orderBy('nama_lengkap', 'asc')->get();
 
             $filename = "Data_Karyawan_" . date('Y-m-d_H-i-s') . ".csv";
             $headers = [
@@ -52,14 +119,23 @@ class KaryawanController extends Controller
                 "Content-Disposition" => "attachment; filename=$filename",
             ];
 
-            $columns = ['No', 'NIK KTP', 'NIK Kerja', 'Nama Lengkap', 'Perusahaan', 'Divisi', 'Departemen', 'Jabatan', 'Tipe Karyawan', 'Jenis Kelamin', 'No HP', 'Status', 'Tanggal Masuk'];
+            $columns = [
+                'No', 'NIK KTP', 'NIK Kerja', 'Nama Lengkap',
+                'Perusahaan', 'Divisi', 'Departemen', 'Jabatan',
+                'Tipe Karyawan', 'JK', 'No HP', 'Pendidikan',
+                'Tgl Lahir', 'Umur', 'Status', 'Tanggal Masuk'
+            ];
 
-            $callback = function() use($karyawans, $columns) {
+            $callback = function () use ($karyawans, $columns) {
                 $file = fopen('php://output', 'w');
                 fputcsv($file, $columns, ';');
 
                 $no = 1;
                 foreach ($karyawans as $kry) {
+                    $umur = $kry->tanggal_lahir
+                        ? \Carbon\Carbon::parse($kry->tanggal_lahir)->age
+                        : '-';
+
                     fputcsv($file, [
                         $no++,
                         "'" . $kry->nik_ktp,
@@ -70,8 +146,11 @@ class KaryawanController extends Controller
                         $kry->departemen->nama_departemen ?? '-',
                         $kry->jabatan->nama_jabatan ?? '-',
                         $kry->tipeKaryawan->nama ?? '-',
-                        $kry->jenis_kelamin == 'L' ? 'Laki-laki' : 'Perempuan',
+                        $kry->jenis_kelamin == 'L' ? 'L' : 'P',
                         "'" . $kry->no_hp,
+                        $kry->pendidikan ?? '-',
+                        $kry->tanggal_lahir ?? '-',
+                        $umur,
                         strtoupper($kry->status),
                         $kry->tanggal_masuk
                     ], ';');
@@ -82,12 +161,30 @@ class KaryawanController extends Controller
             return response()->stream($callback, 200, $headers);
         }
 
-        $karyawans = $query->orderBy('created_at', 'desc')->get();
+        // ==========================================
+        // PAGINATION (15 per halaman) + withQueryString
+        // ==========================================
+        $karyawans = $query->orderBy('nama_lengkap', 'asc')
+                           ->paginate(15)
+                           ->withQueryString();
 
-        $departemens = Departemen::all();
-        $jabatans = Jabatan::all();
+        // ==========================================
+        // DATA DROPDOWN FILTER
+        // ==========================================
+        $divisis = Divisi::where('status', 'aktif')->orderBy('nama_divisi')->get();
+        $departemens = Departemen::orderBy('nama_departemen')->get();
+        $jabatans = Jabatan::orderBy('nama_jabatan')->get();
+        $perusahaans = Perusahaan::where('status', 'aktif')->orderBy('nama_perusahaan')->get();
+        $opsiPendidikan = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2', 'S3'];
 
-        return view('karyawan.index', compact('karyawans', 'departemens', 'jabatans'));
+        return view('karyawan.index', compact(
+            'karyawans',
+            'divisis',
+            'departemens',
+            'jabatans',
+            'perusahaans',
+            'opsiPendidikan'
+        ));
     }
 
     public function create()
@@ -100,9 +197,6 @@ class KaryawanController extends Controller
 
     public function store(Request $request)
     {
-        // ==========================================
-        // VALIDASI
-        // ==========================================
         $request->validate([
             'nik_ktp' => 'required|digits:16|unique:karyawan,nik_ktp',
             'nik_kerja' => 'required|unique:karyawan,nik_kerja',
@@ -123,16 +217,12 @@ class KaryawanController extends Controller
             'tanggal_masuk' => 'required|date',
         ]);
 
-        // ==========================================
-        // GABUNGKAN PENDIDIKAN
-        // ==========================================
+        // Gabungkan pendidikan: "S1-Unila"
         $tingkat = $request->tingkat_pendidikan;
         $namaSekolah = trim($request->nama_sekolah ?? '');
         $pendidikanGabung = $namaSekolah ? "{$tingkat}-{$namaSekolah}" : $tingkat;
 
-        // ==========================================
-        // SIMPAN KARYAWAN
-        // ==========================================
+        // Simpan karyawan
         $karyawan = Karyawan::create([
             'nik_ktp' => $request->nik_ktp,
             'nik_kerja' => $request->nik_kerja,
@@ -154,11 +244,8 @@ class KaryawanController extends Controller
             'status' => 'aktif'
         ]);
 
-        // ==========================================
-        // BUAT AKUN USER OTOMATIS
-        // ==========================================
+        // Buat akun user otomatis
         $username_baru = strtolower(str_replace(' ', '', $request->nama_lengkap));
-
         if (User::where('username', $username_baru)->exists()) {
             $username_baru .= rand(10, 99);
         }
