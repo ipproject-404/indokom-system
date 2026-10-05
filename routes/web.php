@@ -8,6 +8,8 @@ use App\Http\Controllers\KaryawanController;
 use App\Http\Controllers\JabatanDepartemenController;
 use App\Http\Controllers\ProfilController;
 use App\Http\Controllers\RekapAbsensiController;
+use App\Http\Controllers\ShiftTimController;
+use App\Http\Controllers\ShiftHrdController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -84,3 +86,11 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::get('/hrd/profil', [ProfilController::class, 'index'])->name('profile.index');
     Route::post('/hrd/profil/update-password', [ProfilController::class, 'updatePassword'])->name('profile.update-password');
 });
+
+Route::middleware(['auth', 'role:karyawan', 'kepala.bagian'])->group(function () {
+    Route::get('/shift-tim', [ShiftTimController::class, 'index'])->name('shift-tim.index');
+    Route::post('/shift-tim', [ShiftTimController::class, 'store'])->name('shift-tim.store');
+    Route::delete('/shift-tim/{id}', [ShiftTimController::class, 'destroy'])->name('shift-tim.destroy');
+});
+
+Route::get('/hrd/shift', [ShiftHrdController::class, 'index'])->name('shift.hrd.index');

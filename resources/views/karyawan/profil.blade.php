@@ -71,7 +71,7 @@
         background: #ffffff;
         min-height: 100vh;
         box-shadow: none;
-        padding:0 10px 90px 10px;
+        padding-bottom: 90px;
         position: relative;
     }
     .mobile-shell .app-header {
@@ -106,7 +106,7 @@
 
     /* ===== ID CARD (dipakai versi HP & desktop) ===== */
     /* Versi HP: menempel penuh ke tepi layar & header, sudut membulat di bawah */
-    .id-card-full { border-radius: 26px !important; margin-top: -1rem; padding-top: 22px; }
+    .id-card-full { border-radius: 0 0 26px 26px !important; margin-top: -1rem; padding-top: 22px; }
     .id-card {
         position: relative;
         border-radius: 22px;
@@ -267,6 +267,19 @@
                 @endif
             </div>
         </div>
+
+        @if ($karyawan && $karyawan->departemenYangDipimpin()->isNotEmpty())
+            <a href="{{ route('shift-tim.index') }}" class="modern-card d-flex align-items-center gap-3 p-3 mb-4 text-decoration-none">
+                <div class="icon-box" style="width:40px;height:40px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;border-radius:12px;flex-shrink:0;">
+                    <i class="bi bi-calendar-range"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-bold" style="color:#1e293b;font-size:.88rem;">Shift Tim</div>
+                    <div class="text-muted" style="font-size:.74rem;">Atur jadwal shift anak buahmu</div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+            </a>
+        @endif
 
         @if ($karyawan)
             <div class="row g-2 mb-4">
@@ -533,7 +546,7 @@
 
     <aside class="desktop-sidebar">
         <div class="brand">
-            <div><i class="bi bi-qr-code-scan me-1"></i> Indokom Group</div>
+            <div><i class="bi bi-qr-code-scan me-1"></i> Presensi App</div>
             <small>Absensi &amp; Aktivitas Karyawan</small>
         </div>
 
@@ -545,6 +558,11 @@
         <a href="{{ route('absensi.karyawan') }}"><i class="bi bi-calendar-check"></i> Absensi</a>
         <a href="#"><i class="bi bi-mortarboard"></i> Pelatihan</a>
         <a href="{{ route('profil.karyawan') }}" class="active"><i class="bi bi-person-circle"></i> Profil Saya</a>
+
+        @if ($karyawan && $karyawan->departemenYangDipimpin()->isNotEmpty())
+            <div class="nav-section-title">Kepala Bagian</div>
+            <a href="{{ route('shift-tim.index') }}"><i class="bi bi-calendar-range"></i> Shift Tim</a>
+        @endif
 
         <a href="{{ route('profil.karyawan') }}" class="sidebar-profile">
             <div class="avatar">{{ $inisial ?: '?' }}</div>

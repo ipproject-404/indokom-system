@@ -445,6 +445,11 @@
         <a href="#"><i class="bi bi-mortarboard"></i> Pelatihan</a>
         <a href="{{ route('profil.karyawan') }}"><i class="bi bi-person-circle"></i> Profil Saya</a>
 
+        @if ($karyawan && $karyawan->departemenYangDipimpin()->isNotEmpty())
+            <div class="nav-section-title">Kepala Bagian</div>
+            <a href="{{ route('shift-tim.index') }}"><i class="bi bi-calendar-range"></i> Shift Tim</a>
+        @endif
+
         <a href="{{ route('profil.karyawan') }}" class="sidebar-profile">
             <div class="avatar">{{ $inisial ?: '?' }}</div>
             <div>
