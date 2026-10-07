@@ -17,6 +17,8 @@
         ['icon' => 'bi-car-front', 'label' => 'Fasilitas', 'warna' => '#2563eb', 'link' => '#'],
     ];
 
+    $isHrd = $user->role === 'hrd';
+
     $labelStatusAbsen = !$presensiHariIni ? 'Clock In' : (!$presensiHariIni->jam_pulang ? 'Clock Out' : 'Selesai Hari Ini');
     $jamMasuk = $presensiHariIni?->jam_masuk ? \Carbon\Carbon::parse($presensiHariIni->jam_masuk)->format('H:i') : '--:--';
     $jamPulang = $presensiHariIni?->jam_pulang ? \Carbon\Carbon::parse($presensiHariIni->jam_pulang)->format('H:i') : '--:--';
@@ -212,6 +214,19 @@
                 <i class="bi bi-qr-code-scan me-2 fs-5"></i> {{ $labelStatusAbsen }}
             </a>
         </div>
+
+                @if ($isHrd)
+            <a href="{{ route('dashboard.hrd') }}" class="modern-card d-flex align-items-center gap-3 p-3 mb-4 text-decoration-none">
+                <div style="width:40px;height:40px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;border-radius:12px;flex-shrink:0;">
+                    <i class="bi bi-grid-1x2-fill"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-bold" style="color:#1e293b;font-size:.88rem;">Dashboard HRD</div>
+                    <div class="text-muted" style="font-size:.74rem;">Kelola karyawan, kehadiran, dan lembur</div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+            </a>
+        @endif
 
         <h6 class="fw-bold mb-3 ms-1">Menu Aplikasi</h6>
         <div class="modern-card p-3 mb-4">
@@ -460,6 +475,11 @@
         <a href="#"><i class="bi bi-check2-square"></i> Aktivitas</a>
         <a href="{{ route('absensi.karyawan') }}"><i class="bi bi-calendar-check"></i> Absensi</a>
         <a href="#"><i class="bi bi-mortarboard"></i> Pelatihan</a>
+
+        @if ($isHrd)
+            <div class="nav-section-title">Khusus HRD</div>
+            <a href="{{ route('dashboard.hrd') }}"><i class="bi bi-grid-1x2-fill"></i> Dashboard HRD</a>
+        @endif
 
         <div class="nav-section-title">Menu Aplikasi</div>
         @foreach ($menuAplikasi as $item)

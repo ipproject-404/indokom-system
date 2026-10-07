@@ -16,7 +16,7 @@
 
 return [
     'karyawan' => 'dashboard.karyawan',
-    'hrd' => 'dashboard.hrd',
+    'hrd' => 'dashboard.karyawan',
 
     // Contoh kalau nanti nambah role baru, tinggal buka komentar
     // dan sesuaikan nama route-nya:

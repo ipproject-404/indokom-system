@@ -14,12 +14,17 @@ class ProfilController extends Controller
      * Halaman profil pengguna yang sedang login.
      * Data diambil dari akun yang login sendiri (Auth::user()) --
      * karyawan tidak bisa lihat/akses profil orang lain lewat sini,
-     * beda dengan halaman HRD yang memang perlu {id} di URL.[cite: 15]
+     * beda dengan halaman HRD yang memang perlu {id} di URL.
+     *
+     * View ditentukan oleh route yang dibuka, bukan hanya role:
+     * - profil.karyawan (/profil-karyawan) -> selalu tampilan karyawan,
+     *   termasuk untuk HRD yang masuk lewat dashboard karyawan.
+     * - profile.index (/hrd/profil) -> tampilan profil HRD.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
-        $karyawan = $user->karyawan; // null kalau akun ini tidak terhubung ke data karyawan[cite: 15]
+        $karyawan = $user->karyawan; // null kalau akun ini tidak terhubung ke data karyawan
 
         $jumlahHadirBulanIni = null;
         if ($karyawan) {
@@ -30,8 +35,10 @@ class ProfilController extends Controller
                 ->count();
         }
 
-        // Jika role HRD atau Admin, arahkan ke profil khusus HRD[cite: 15]
-        if ($user->role === 'hrd' || $user->role === 'admin') {
+        $pakaiProfilHrd = in_array($user->role, ['hrd', 'admin'], true)
+            && ! $request->routeIs('profil.karyawan');
+
+        if ($pakaiProfilHrd) {
             return view('karyawan.profil_hrd', [
                 'user' => $user,
                 'karyawan' => $karyawan,
@@ -39,7 +46,6 @@ class ProfilController extends Controller
             ]);
         }
 
-        // Default untuk karyawan biasa[cite: 15]
         return view('karyawan.profil', [
             'user' => $user,
             'karyawan' => $karyawan,

@@ -30,7 +30,7 @@ Route::get('/absensi/scan', [QrController::class, 'showScanAbsensi'])->name('abs
 Route::post('/absensi/scan', [QrController::class, 'scanAbsensi'])->name('absensi.scan.submit');
 
 // --- Dashboard Karyawan ---
-Route::middleware(['auth', 'role:karyawan'])->group(function () {
+Route::middleware(['auth', 'role:karyawan,hrd'])->group(function () {
     Route::get('/dashboard-karyawan', [DashboardController::class, 'index'])->name('dashboard.karyawan');
     Route::get('/profil-karyawan', [ProfilController::class, 'index'])->name('profil.karyawan');
     Route::get('/absensi-karyawan', [RekapAbsensiController::class, 'index'])->name('absensi.karyawan');

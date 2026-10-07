@@ -48,6 +48,10 @@
                 <i class="bi bi-grid-1x2-fill mr-3"></i>
                 <span class="text-sm font-medium">Dashboard</span>
             </a>
+                        <a href="{{ route('dashboard.karyawan') }}" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
+                <i class="bi bi-qr-code-scan mr-3"></i>
+                <span class="text-sm font-medium">Absensi Saya</span>
+            </a>
 
             <div class="uppercase text-gray-400 text-xs font-bold mb-3 mt-6">Kelola Karyawan</div>
             <a href="{{ route('karyawan.index') }}" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
