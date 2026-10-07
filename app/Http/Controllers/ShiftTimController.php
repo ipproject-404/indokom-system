@@ -2,142 +2,251 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Departemen;
 use App\Models\JadwalShift;
 use App\Models\Karyawan;
+use App\Models\Presensi;
 use App\Models\Shift;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ShiftTimController extends Controller
 {
+    /** Batas jumlah hari sekali atur, supaya satu request tidak membuat ribuan baris. */
+    private const MAKS_HARI_SEKALI_ATUR = 62;
+
     /**
-     * Daftar anak buah di SEMUA departemen yang dipimpin karyawan yang
-     * sedang login, lengkap dengan shift yang berlaku hari ini dan jadwal
-     * yang sudah disiapkan untuk masa depan (kalau ada).
+     * Papan jadwal mingguan anak buah yang pakai_jadwal_shift = true di
+     * SEMUA departemen yang dipimpin. ?minggu=YYYY-MM-DD menggeser minggu.
      */
-    public function index()
+    public function index(Request $request)
     {
+        Carbon::setLocale('id');
+
+        $request->validate(['minggu' => 'nullable|date_format:Y-m-d']);
+
         $karyawan = Auth::user()->karyawan;
         $departemenDipimpin = $karyawan->departemenYangDipimpin();
         $idDepartemen = $departemenDipimpin->pluck('id');
 
-        $anakBuah = Karyawan::with(['jabatan', 'departemen', 'shift'])
+        $semua = Karyawan::with(['jabatan', 'departemen'])
             ->whereIn('departemen_id', $idDepartemen)
             ->where('status', 'aktif')
             ->orderBy('nama_lengkap')
             ->get();
 
-        $hariIni = Carbon::now();
+        $anakBuah = $semua->where('pakai_jadwal_shift', true)->values();
+        $tanpaJadwal = $semua->where('pakai_jadwal_shift', false)->count();
 
-        $anakBuah->each(function ($k) use ($hariIni) {
-            $k->shift_sekarang = $k->shiftPadaTanggal($hariIni);
+        $mulaiMinggu = $request->filled('minggu')
+            ? Carbon::parse($request->query('minggu'))->startOfWeek()
+            : Carbon::today()->startOfWeek();
 
-            // Jadwal yang sudah disiapkan tapi belum berlaku (berlaku_mulai
-            // di masa depan) -- ditampilkan supaya kepala bagian tahu apa
-            // yang sudah dia atur sebelumnya untuk orang ini.
-            $k->jadwal_akan_datang = $k->jadwalShift()
-                ->with('shift')
-                ->where('berlaku_mulai', '>', $hariIni->toDateString())
-                ->orderBy('berlaku_mulai')
-                ->get();
-        });
+        $hari = collect(range(0, 6))->map(fn ($i) => $mulaiMinggu->copy()->addDays($i));
+        $awal = $hari->first()->toDateString();
+        $akhir = $hari->last()->toDateString();
+        $idAnakBuah = $anakBuah->pluck('id');
 
-        $shifts = Shift::where('status', 'aktif')->orderBy('nama_shift')->get();
+        $jadwal = JadwalShift::with('shift')
+            ->whereIn('karyawan_id', $idAnakBuah)
+            ->whereBetween('tanggal', [$awal, $akhir])
+            ->get()
+            ->groupBy('karyawan_id')
+            ->map(fn ($g) => $g->keyBy(fn ($j) => $j->tanggal->toDateString()));
+
+        // Sel yang sudah punya absensi dikunci (tidak boleh diubah lagi).
+        $adaPresensi = Presensi::whereIn('karyawan_id', $idAnakBuah)
+            ->whereBetween('tanggal', [$awal, $akhir])
+            ->get(['karyawan_id', 'tanggal'])
+            ->map(fn ($p) => $p->karyawan_id . '|' . Carbon::parse($p->tanggal)->toDateString())
+            ->flip();
+
+        // Hanya shift milik semua PT atau PT anak buah yang ditampilkan.
+        $idPerusahaan = $anakBuah->pluck('perusahaan_id')->unique();
+        $shifts = Shift::where('status', 'aktif')
+            ->where(fn ($q) => $q->whereNull('perusahaan_id')->orWhereIn('perusahaan_id', $idPerusahaan))
+            ->orderBy('nama_shift')
+            ->get();
 
         return view('karyawan.shift-tim', [
             'anakBuah' => $anakBuah,
+            'tanpaJadwal' => $tanpaJadwal,
             'shifts' => $shifts,
             'departemenDipimpin' => $departemenDipimpin,
+            'hari' => $hari,
+            'jadwal' => $jadwal,
+            'adaPresensi' => $adaPresensi,
+            'mingguSebelumnya' => $mulaiMinggu->copy()->subWeek()->toDateString(),
+            'mingguBerikutnya' => $mulaiMinggu->copy()->addWeek()->toDateString(),
         ]);
     }
 
     /**
-     * Menukar/menjadwalkan shift seorang anak buah mulai tanggal tertentu
-     * (boleh tanggal depan, supaya bisa disiapkan dari jauh hari).
-     *
-     * Aturan penyederhanaan yang dipakai: jadwal baru ini MENGGANTIKAN semua
-     * jadwal yang sudah diatur mulai tanggal yang sama atau sesudahnya --
-     * supaya kepala bagian tidak perlu menghapus manual dulu kalau berubah
-     * pikiran soal jadwal yang sudah disiapkan. Jadwal yang sedang berjalan
-     * (mulai sebelum tanggal ini) ditutup di H-1 dari tanggal baru, bukan
-     * dihapus, supaya riwayatnya tetap tersimpan.
+     * Mengatur shift (atau libur kalau shift_id kosong) untuk satu atau
+     * beberapa anak buah, dari tanggal_mulai sampai tanggal_selesai.
+     * Tanggal lampau ditolak; tanggal yang sudah punya absensi dilewati.
      */
     public function store(Request $request)
     {
         $request->validate([
-            'karyawan_id' => 'required|exists:karyawan,id',
-            'shift_id' => 'required|exists:shift,id',
-            'berlaku_mulai' => 'required|date',
+            'karyawan_ids' => 'required|array|min:1',
+            'karyawan_ids.*' => 'integer|exists:karyawan,id',
+            'shift_id' => 'nullable|exists:shift,id',
+            'tanggal_mulai' => 'required|date|after_or_equal:today',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'keterangan' => 'nullable|string|max:255',
         ]);
 
-        $karyawan = Auth::user()->karyawan;
-        $idDepartemenDipimpin = $karyawan->departemenYangDipimpin()->pluck('id');
+        $mulai = Carbon::parse($request->tanggal_mulai)->startOfDay();
+        $selesai = Carbon::parse($request->tanggal_selesai)->startOfDay();
 
-        $anakBuah = Karyawan::findOrFail($request->karyawan_id);
-
-        // Jaga supaya kepala bagian A tidak bisa mengatur shift karyawan di
-        // departemen lain lewat request yang dimanipulasi -- bukan cuma
-        // mengandalkan tombol yang disembunyikan di tampilan.
-        if (! $idDepartemenDipimpin->contains($anakBuah->departemen_id)) {
-            abort(403, 'Karyawan ini bukan anak buah di departemen yang kamu pimpin.');
+        if ($mulai->diffInDays($selesai) >= self::MAKS_HARI_SEKALI_ATUR) {
+            return back()->withInput()->with('error', 'Maksimal ' . self::MAKS_HARI_SEKALI_ATUR . ' hari sekali atur.');
         }
 
-        $mulai = Carbon::parse($request->berlaku_mulai)->startOfDay();
+        $ids = array_values(array_unique(array_map('intval', $request->karyawan_ids)));
+        $anak = $this->anakBuahYangBolehDiatur($ids);
 
-        // Hapus jadwal yang sudah disiapkan mulai tanggal ini atau sesudahnya
-        // -- digantikan oleh instruksi baru ini.
-        JadwalShift::where('karyawan_id', $anakBuah->id)
-            ->where('berlaku_mulai', '>=', $mulai->toDateString())
-            ->delete();
+        // Jaga supaya tidak bisa mengatur karyawan di luar departemen yang
+        // dipimpin lewat request yang dimanipulasi.
+        if ($anak->count() !== count($ids)) {
+            abort(403, 'Ada karyawan yang bukan anak buah berjadwal shift di departemen yang kamu pimpin.');
+        }
 
-        // Tutup jadwal yang sedang berjalan (kalau ada & masih terbuka),
-        // bukan dihapus -- supaya riwayat shift sebelumnya tetap tercatat.
-        JadwalShift::where('karyawan_id', $anakBuah->id)
-            ->where('berlaku_mulai', '<', $mulai->toDateString())
-            ->whereNull('berlaku_sampai')
-            ->update(['berlaku_sampai' => $mulai->copy()->subDay()->toDateString()]);
+        $shift = $request->shift_id
+            ? Shift::where('status', 'aktif')->findOrFail($request->shift_id)
+            : null;
 
-        JadwalShift::create([
-            'karyawan_id' => $anakBuah->id,
-            'shift_id' => $request->shift_id,
-            'berlaku_mulai' => $mulai->toDateString(),
-            'berlaku_sampai' => null,
-            'dibuat_oleh' => Auth::id(),
-            'keterangan' => $request->keterangan,
-        ]);
+        if ($shift) {
+            foreach ($anak as $k) {
+                if (! $this->shiftBolehDipakai($shift, $k)) {
+                    return back()->withInput()->with('error', "Shift {$shift->nama_shift} bukan milik perusahaan {$k->nama_lengkap}.");
+                }
+            }
+        }
 
-        $pesan = $mulai->isToday() || $mulai->isPast()
-            ? 'Shift berhasil diubah, berlaku mulai hari ini.'
-            : 'Shift berhasil dijadwalkan, mulai berlaku ' . $mulai->translatedFormat('d F Y') . '.';
+        $tersimpan = 0;
+        $dilewati = 0;
+
+        DB::transaction(function () use ($anak, $mulai, $selesai, $shift, $request, &$tersimpan, &$dilewati) {
+            foreach ($anak as $k) {
+                $sudahAbsen = Presensi::where('karyawan_id', $k->id)
+                    ->whereBetween('tanggal', [$mulai->toDateString(), $selesai->toDateString()])
+                    ->pluck('tanggal')
+                    ->map(fn ($t) => Carbon::parse($t)->toDateString())
+                    ->all();
+
+                foreach (CarbonPeriod::create($mulai, $selesai) as $tgl) {
+                    $tanggal = $tgl->toDateString();
+
+                    if (in_array($tanggal, $sudahAbsen, true)) {
+                        $dilewati++;
+                        continue;
+                    }
+
+                    JadwalShift::updateOrCreate(
+                        ['karyawan_id' => $k->id, 'tanggal' => $tanggal],
+                        [
+                            'shift_id' => $shift?->id,
+                            'dibuat_oleh' => Auth::id(),
+                            'keterangan' => $request->keterangan,
+                        ]
+                    );
+                    $tersimpan++;
+                }
+            }
+        });
+
+        $pesan = "{$tersimpan} jadwal tersimpan.";
+        if ($dilewati > 0) {
+            $pesan .= " {$dilewati} dilewati karena sudah ada absensi.";
+        }
 
         return back()->with('success', $pesan);
     }
 
     /**
-     * Batalkan satu jadwal yang sudah disiapkan untuk masa depan (belum
-     * berlaku). Jadwal yang SEDANG berjalan sengaja tidak bisa dihapus
-     * lewat sini -- kalau mau diganti, buat jadwal baru lewat store().
+     * Tukar shift dua anak buah di SATU tanggal. Shift (atau libur) A
+     * pindah ke B dan sebaliknya; jadwal hari lain tidak tersentuh.
      */
-    public function destroy($id)
+    public function tukar(Request $request)
     {
-        $karyawan = Auth::user()->karyawan;
-        $idDepartemenDipimpin = $karyawan->departemenYangDipimpin()->pluck('id');
+        $request->validate([
+            'karyawan_a_id' => 'required|integer|exists:karyawan,id',
+            'karyawan_b_id' => 'required|integer|exists:karyawan,id|different:karyawan_a_id',
+            'tanggal' => 'required|date|after_or_equal:today',
+            'keterangan' => 'nullable|string|max:255',
+        ], [
+            'karyawan_b_id.different' => 'Pilih dua karyawan yang berbeda.',
+        ]);
 
-        $jadwal = JadwalShift::with('karyawan')->findOrFail($id);
+        $ids = [(int) $request->karyawan_a_id, (int) $request->karyawan_b_id];
+        $anak = $this->anakBuahYangBolehDiatur($ids)->keyBy('id');
 
-        if (! $idDepartemenDipimpin->contains($jadwal->karyawan->departemen_id)) {
-            abort(403);
+        if ($anak->count() !== 2) {
+            abort(403, 'Ada karyawan yang bukan anak buah berjadwal shift di departemen yang kamu pimpin.');
         }
 
-        if ($jadwal->berlaku_mulai->lte(Carbon::today())) {
-            return back()->with('error', 'Jadwal yang sedang berjalan tidak bisa dibatalkan, buat jadwal baru untuk menggantikannya.');
+        $a = $anak[$ids[0]];
+        $b = $anak[$ids[1]];
+        $tanggal = Carbon::parse($request->tanggal)->toDateString();
+
+        if (Presensi::whereIn('karyawan_id', $ids)->whereDate('tanggal', $tanggal)->exists()) {
+            return back()->withInput()->with('error', 'Salah satu karyawan sudah punya absensi di tanggal itu, jadwalnya tidak bisa ditukar.');
         }
 
-        $jadwal->delete();
+        $shiftA = JadwalShift::with('shift')->where('karyawan_id', $a->id)->where('tanggal', $tanggal)->first()?->shift;
+        $shiftB = JadwalShift::with('shift')->where('karyawan_id', $b->id)->where('tanggal', $tanggal)->first()?->shift;
 
-        return back()->with('success', 'Jadwal yang akan datang berhasil dibatalkan.');
+        if ($shiftA?->id === $shiftB?->id) {
+            return back()->withInput()->with('error', 'Keduanya sudah di shift yang sama (atau sama-sama libur) di tanggal itu, tidak ada yang perlu ditukar.');
+        }
+
+        if (($shiftB && ! $this->shiftBolehDipakai($shiftB, $a)) || ($shiftA && ! $this->shiftBolehDipakai($shiftA, $b))) {
+            return back()->withInput()->with('error', 'Shift salah satu karyawan bukan milik perusahaan karyawan yang satunya, tidak bisa ditukar.');
+        }
+
+        DB::transaction(function () use ($a, $b, $shiftA, $shiftB, $tanggal, $request) {
+            JadwalShift::updateOrCreate(
+                ['karyawan_id' => $a->id, 'tanggal' => $tanggal],
+                [
+                    'shift_id' => $shiftB?->id,
+                    'dibuat_oleh' => Auth::id(),
+                    'keterangan' => $request->keterangan ?: 'Tukar shift dengan ' . $b->nama_lengkap,
+                ]
+            );
+            JadwalShift::updateOrCreate(
+                ['karyawan_id' => $b->id, 'tanggal' => $tanggal],
+                [
+                    'shift_id' => $shiftA?->id,
+                    'dibuat_oleh' => Auth::id(),
+                    'keterangan' => $request->keterangan ?: 'Tukar shift dengan ' . $a->nama_lengkap,
+                ]
+            );
+        });
+
+        return back()->with('success', "Shift {$a->nama_lengkap} dan {$b->nama_lengkap} pada "
+            . Carbon::parse($tanggal)->translatedFormat('d F Y') . ' berhasil ditukar.');
+    }
+
+    /** Anak buah aktif, berjadwal shift, di departemen yang dipimpin user login. */
+    private function anakBuahYangBolehDiatur(array $ids)
+    {
+        $idDepartemen = Auth::user()->karyawan->departemenYangDipimpin()->pluck('id');
+
+        return Karyawan::whereIn('id', $ids)
+            ->whereIn('departemen_id', $idDepartemen)
+            ->where('status', 'aktif')
+            ->where('pakai_jadwal_shift', true)
+            ->get();
+    }
+
+    /** Shift tanpa perusahaan_id berlaku untuk semua PT; selain itu harus sama dengan PT karyawan. */
+    private function shiftBolehDipakai(Shift $shift, Karyawan $karyawan): bool
+    {
+        return $shift->perusahaan_id === null
+            || (int) $shift->perusahaan_id === (int) $karyawan->perusahaan_id;
     }
 }

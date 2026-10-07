@@ -54,4 +54,36 @@ class Shift extends Model
     {
         return in_array($isoHari, $this->hari_kerja ?? [], true);
     }
+
+        /**
+     * Shift melewati tengah malam kalau jam pulang <= jam masuk
+     * (contoh Malam 22:00-06:00). $isoHari = hari MULAI shift.
+     */
+    public function melewatiTengahMalam(?int $isoHari = null): bool
+    {
+        $pulang = $isoHari ? $this->jamPulangUntukHari($isoHari) : $this->jam_pulang_default;
+
+        return substr($pulang, 0, 5) <= substr($this->jam_masuk, 0, 5);
+    }
+
+    /** Waktu masuk standar untuk tanggal kerja tertentu. */
+    public function waktuMasuk(Carbon $tanggalKerja): Carbon
+    {
+        return Carbon::parse($tanggalKerja->toDateString() . ' ' . $this->jam_masuk);
+    }
+
+    /** Waktu pulang standar; otomatis +1 hari untuk shift yang lewat tengah malam. */
+    public function waktuPulang(Carbon $tanggalKerja): Carbon
+    {
+        $masuk = $this->waktuMasuk($tanggalKerja);
+        $pulang = Carbon::parse(
+            $tanggalKerja->toDateString() . ' ' . $this->jamPulangUntukHari($tanggalKerja->dayOfWeekIso)
+        );
+
+        if ($pulang->lte($masuk)) {
+            $pulang->addDay();
+        }
+
+        return $pulang;
+    }
 }

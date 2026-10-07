@@ -10,24 +10,24 @@ use Carbon\Carbon;
 class RekapAbsensiController extends Controller
 {
     /**
-     * Rekap kehadiran bulanan milik karyawan yang sedang login,
-     * ditampilkan sebagai kalender (Senin - Minggu) per minggu.
+     * Rekap kehadiran bulanan milik karyawan yang sedang login (kalender).
      *
-     * Cara menghitung status per hari BERGANTUNG pada
-     * tipe_karyawan.dasar_absensi milik karyawan ini:
-     * - 'jadwal' (bulanan, bulanan_kontrak): dicek terhadap shift ->
-     *   bisa berstatus "Terlambat", dan hari yang bukan hari_kerja shift-nya
-     *   ikut dihitung libur.
-     * - 'jam' (borongan_jam): tidak ada konsep terlambat/jadwal, karena jam
-     *   masuknya mengikuti ketersediaan barang. Total jam kerja per hari
-     *   dihitung dan dijumlah di ringkasan, karena itu dasar upahnya.
-     * - 'hasil' (borongan_hasil): gaji dari transaksi_produksi, bukan dari
-     *   jam kerja. Rekap di sini hanya log kehadiran sederhana (belum
-     *   dikaitkan ke hasil produksi -- menunggu keputusan lebih lanjut).
+     * Cara hitung bergantung pada tipe_karyawan.dasar_absensi:
+     * - 'jadwal': dicek terhadap shift -> bisa "Terlambat". Dua pola:
+     *     * shift tetap (pakai_jadwal_shift = false): hari libur = Minggu,
+     *       tanggal merah, dan hari di luar hari_kerja shift.
+     *     * jadwal bergilir (pakai_jadwal_shift = true): libur HANYA kalau
+     *       di jadwal_shift tidak ada shift di tanggal itu.
+     * - 'jam': total jam kerja per hari dijumlah; tidak ada "terlambat".
+     * - 'hasil': log kehadiran sederhana.
      *
-     * Bulan yang ditampilkan bisa digeser lewat query string ?bulan=YYYY-MM.
-     * Data lain karyawan TIDAK bisa diintip lewat sini karena yang dipakai
-     * selalu Auth::user()->karyawan, bukan id dari URL.
+     * Shift yang dipakai untuk menghitung terlambat/pulang awal adalah
+     * snapshot di presensi.shift_id (kalau ada), bukan shift karyawan saat ini.
+     * Presensi shift malam dihitung dari waktu masuk/pulang sebenarnya
+     * (pulang bisa di tanggal kalender berikutnya).
+     *
+     * Bulan bisa digeser lewat ?bulan=YYYY-MM. Data karyawan lain tidak bisa
+     * diintip karena selalu memakai Auth::user()->karyawan.
      */
     public function index(Request $request)
     {
@@ -46,7 +46,8 @@ class RekapAbsensiController extends Controller
 
         $daftarPresensi = collect();
         if ($karyawan) {
-            $daftarPresensi = Presensi::where('karyawan_id', $karyawan->id)
+            $daftarPresensi = Presensi::with('shift')
+                ->where('karyawan_id', $karyawan->id)
                 ->whereBetween('tanggal', [$tanggalMulai->toDateString(), $tanggalAkhir->toDateString()])
                 ->get()
                 ->keyBy(fn ($p) => Carbon::parse($p->tanggal)->toDateString());
@@ -62,14 +63,19 @@ class RekapAbsensiController extends Controller
         $cutiBersama = config('hari_libur.cuti_bersama', []);
         $hitungCutiBersama = config('hari_libur.anggap_cuti_bersama_libur', false);
 
-        // dasar_absensi menentukan cara hitung di bawah. Kalau karyawan belum
-        // punya tipe_karyawan (data lama yang belum sempat dilengkapi HRD),
-        // fallback ke 'jadwal' -- perilaku paling aman & sama seperti sebelumnya.
+        // Tanpa tipe_karyawan (data lama) -> fallback 'jadwal'.
         $dasarAbsensi = $karyawan?->tipeKaryawan?->dasar_absensi ?? 'jadwal';
-        // Shift TIDAK diambil sekali untuk sebulan penuh -- sebagian karyawan
-        // shift-nya bergilir (ditukar kepala bagian per periode lewat tabel
-        // jadwal_shift), jadi shift dicari ULANG tiap tanggal di bawah lewat
-        // $karyawan->shiftPadaTanggal($tgl).
+        $pakaiJadwal = $dasarAbsensi === 'jadwal' && (bool) $karyawan?->pakai_jadwal_shift;
+
+        // Jadwal sebulan dimuat sekali (bukan query per tanggal).
+        $jadwalBulan = collect();
+        if ($karyawan && $pakaiJadwal) {
+            $jadwalBulan = $karyawan->jadwalShift()
+                ->with('shift')
+                ->whereBetween('tanggal', [$tanggalMulai->toDateString(), $tanggalAkhir->toDateString()])
+                ->get()
+                ->keyBy(fn ($j) => $j->tanggal->toDateString());
+        }
 
         $harian = [];
         $totalJamKerjaMenit = 0;
@@ -80,76 +86,78 @@ class RekapAbsensiController extends Controller
             $isMasaDepan = $key > $hariIni;
             $belumBergabung = $tanggalMasuk && $tgl->lt($tanggalMasuk);
 
-            $namaLibur = $liburNasional[$key]
-                ?? ($hitungCutiBersama ? ($cutiBersama[$key] ?? null) : null);
-
-            // Hari Minggu & tanggal merah selalu libur untuk semua tipe.
-            // Tambahan: kalau karyawan sudah punya shift dengan hari_kerja
-            // sendiri (misal shift yang tidak masuk Sabtu), hari di luar itu
-            // ikut dihitung libur juga -- ini hanya berlaku untuk dasar_absensi
-            // 'jadwal', karena borongan jam/hasil biasanya tidak terikat shift.
-            $isLibur = $tgl->isSunday() || $namaLibur !== null;
-            $shiftHariIni = $dasarAbsensi === 'jadwal' ? $karyawan?->shiftPadaTanggal($tgl) : null;
-            if (! $isLibur && $shiftHariIni && ! $shiftHariIni->apakahHariKerja($tgl->dayOfWeekIso)) {
-                $isLibur = true;
-                $namaLibur = $namaLibur ?? 'Hari libur shift ' . $shiftHariIni->nama_shift;
+            // Shift menurut jadwal/shift tetap untuk tanggal ini.
+            $shiftJadwal = null;
+            if ($dasarAbsensi === 'jadwal') {
+                $shiftJadwal = $pakaiJadwal
+                    ? $jadwalBulan->get($key)?->shift
+                    : $karyawan?->shift;
             }
-            $keteranganLibur = $namaLibur ?? ($tgl->isSunday() ? 'Hari Minggu' : null);
 
+            if ($pakaiJadwal) {
+                // Jadwal bergilir adalah satu-satunya sumber: Minggu, tanggal
+                // merah, dan hari_kerja shift tidak dipakai.
+                $isLibur = $shiftJadwal === null;
+                $keteranganLibur = $isLibur
+                    ? ($jadwalBulan->has($key) ? 'Libur sesuai jadwal shift' : 'Belum ada jadwal shift')
+                    : null;
+            } else {
+                $namaLibur = $liburNasional[$key]
+                    ?? ($hitungCutiBersama ? ($cutiBersama[$key] ?? null) : null);
+
+                $isLibur = $tgl->isSunday() || $namaLibur !== null;
+                if (! $isLibur && $shiftJadwal && ! $shiftJadwal->apakahHariKerja($tgl->dayOfWeekIso)) {
+                    $isLibur = true;
+                    $namaLibur = 'Hari libur shift ' . $shiftJadwal->nama_shift;
+                }
+                $keteranganLibur = $namaLibur ?? ($tgl->isSunday() ? 'Hari Minggu' : null);
+            }
+
+            // Ada presensi di hari libur tetap dihitung hadir.
             if ($belumBergabung) {
                 $status = 'belum_gabung';
-            } elseif ($isLibur) {
-                $status = 'libur';
             } elseif ($presensi) {
                 $status = 'hadir';
+            } elseif ($isLibur) {
+                $status = 'libur';
             } elseif ($isMasaDepan) {
                 $status = 'belum_diisi';
             } else {
                 $status = 'tidak_hadir';
             }
 
-            // ------------------------------------------------------------
-            // Terlambat & pulang lebih awal -- HANYA untuk dasar_absensi
-            // 'jadwal' dan karyawan yang sudah punya shift. Borongan jam
-            // tidak pernah dianggap terlambat, hanya dihitung total jamnya.
-            // ------------------------------------------------------------
             $terlambatMenit = null;
             $pulangAwalMenit = null;
             $jamStandar = null;
             $totalJamHariIni = null;
             $namaShiftHariIni = null;
 
-            if ($presensi && ! $isLibur && $dasarAbsensi === 'jadwal' && $shiftHariIni) {
-                $masukStandar = Carbon::parse($key . ' ' . $shiftHariIni->jam_masuk);
-                $masuk = Carbon::parse($key . ' ' . $presensi->jam_masuk);
+            // Standar jam: snapshot shift di presensi diutamakan.
+            $shiftPakai = $isLibur ? null : ($presensi?->shift ?? $shiftJadwal);
 
-                if ($masuk->copy()->startOfMinute()->gt($masukStandar->copy()->addMinutes($shiftHariIni->toleransi_menit))) {
+            if ($presensi && $dasarAbsensi === 'jadwal' && $shiftPakai) {
+                $masukStandar = $shiftPakai->waktuMasuk($tgl);
+                $masuk = $presensi->waktuMasukLengkap();
+
+                if ($masuk->copy()->startOfMinute()->gt($masukStandar->copy()->addMinutes($shiftPakai->toleransi_menit))) {
                     $terlambatMenit = (int) floor(abs($masukStandar->diffInMinutes($masuk)));
-                    if ($status === 'hadir') {
-                        $status = 'terlambat';
-                    }
+                    $status = 'terlambat';
                 }
 
-                $jamPulangStandarTeks = $shiftHariIni->jamPulangUntukHari($tgl->dayOfWeekIso);
-                $pulangStandar = Carbon::parse($key . ' ' . $jamPulangStandarTeks);
-                if ($presensi->jam_pulang) {
-                    $pulang = Carbon::parse($key . ' ' . $presensi->jam_pulang);
-                    if ($pulang->lt($pulangStandar)) {
-                        $pulangAwalMenit = (int) floor(abs($pulang->diffInMinutes($pulangStandar)));
-                    }
+                $pulangStandar = $shiftPakai->waktuPulang($tgl);
+                $pulang = $presensi->waktuPulangLengkap();
+                if ($pulang && $pulang->lt($pulangStandar)) {
+                    $pulangAwalMenit = (int) floor(abs($pulang->diffInMinutes($pulangStandar)));
                 }
 
-                $jamStandar = substr($shiftHariIni->jam_masuk, 0, 5) . ' - ' . substr($jamPulangStandarTeks, 0, 5);
-                $namaShiftHariIni = $shiftHariIni->nama_shift;
+                $jamStandar = substr($shiftPakai->jam_masuk, 0, 5) . ' - '
+                    . substr($shiftPakai->jamPulangUntukHari($tgl->dayOfWeekIso), 0, 5);
+                $namaShiftHariIni = $shiftPakai->nama_shift;
             }
 
-            // Total jam kerja per hari -- dihitung untuk SEMUA dasar_absensi
-            // selama jam pulang sudah tercatat (berguna terutama untuk
-            // borongan_jam, tapi tidak ada salahnya ditampilkan untuk yang lain).
+            // Total jam kerja per hari (dari waktu sebenarnya, aman untuk shift malam).
             if ($presensi && $presensi->jam_pulang) {
-                $masukAktual = Carbon::parse($key . ' ' . $presensi->jam_masuk);
-                $pulangAktual = Carbon::parse($key . ' ' . $presensi->jam_pulang);
-                $menitKerja = (int) abs($masukAktual->diffInMinutes($pulangAktual));
+                $menitKerja = (int) abs($presensi->waktuMasukLengkap()->diffInMinutes($presensi->waktuPulangLengkap()));
                 $totalJamHariIni = $menitKerja;
                 if ($dasarAbsensi === 'jam') {
                     $totalJamKerjaMenit += $menitKerja;
@@ -165,7 +173,7 @@ class RekapAbsensiController extends Controller
                 'terlambat_menit' => $terlambatMenit,
                 'pulang_awal_menit' => $pulangAwalMenit,
                 'jam_standar' => $jamStandar,
-                'nama_shift' => $namaShiftHariIni ?? null,
+                'nama_shift' => $namaShiftHariIni,
                 'total_jam_menit' => $totalJamHariIni,
             ];
         }

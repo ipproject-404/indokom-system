@@ -37,7 +37,7 @@
     $sudahPulang = (bool) $presensiHariIni?->jam_pulang;
     $absenSelesai = $sudahMasuk && $sudahPulang;
 
-    $batasAbsenPulang = null;
+   // $batasAbsenPulang = $presensiHariIni->waktuMasukLengkap()->addHour();
     $bolehAbsenPulang = true;
     if ($sudahMasuk && !$sudahPulang) {
         $batasAbsenPulang = \Carbon\Carbon::parse($presensiHariIni->tanggal . ' ' . $presensiHariIni->jam_masuk)->addHour();
@@ -187,6 +187,11 @@
         <div class="modern-card p-3 mb-4">
             <div class="text-center mb-4 mt-2">
                 <div class="text-muted small mb-1"><i class="bi bi-calendar-event me-1"></i> {{ $tanggalHariIni }}</div>
+                 @if ($shiftHariIni)
+                    <div class="small fw-semibold text-primary mb-1"><i class="bi bi-clock me-1"></i>Shift {{ $shiftHariIni->nama_shift }} &middot; {{ substr($shiftHariIni->jam_masuk, 0, 5) }} - {{ substr($shiftHariIni->jam_pulang_default, 0, 5) }}</div>
+                @elseif ($karyawan?->pakai_jadwal_shift)
+                    <div class="small text-muted mb-1">Hari ini libur / belum ada jadwal shift</div>
+                @endif
                 <div class="time-display mt-2" id="realtime-clock-mobile">--:--:--</div>
                 <div class="badge bg-primary-subtle text-primary fw-semibold mt-1 px-3">WIB</div>
             </div>
@@ -574,6 +579,11 @@
                     <div class="absen-highlight">
                         <div>
                             <div class="small opacity-75 mb-1">{{ $tanggalHariIni }}</div>
+                                                        @if ($shiftHariIni)
+                                <div class="small fw-semibold mb-1"><i class="bi bi-clock me-1"></i>Shift {{ $shiftHariIni->nama_shift }} &middot; {{ substr($shiftHariIni->jam_masuk, 0, 5) }} - {{ substr($shiftHariIni->jam_pulang_default, 0, 5) }}</div>
+                            @elseif ($karyawan?->pakai_jadwal_shift)
+                                <div class="small opacity-75 mb-1">Hari ini libur / belum ada jadwal shift</div>
+                            @endif
                             <div class="time-display" id="realtime-clock-desktop">--:--:--</div>
                             <div class="small opacity-75 mt-1">WIB</div>
                         </div>

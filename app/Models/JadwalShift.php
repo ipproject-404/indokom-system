@@ -10,16 +10,14 @@ class JadwalShift extends Model
 
     protected $fillable = [
         'karyawan_id',
+        'tanggal',
         'shift_id',
-        'berlaku_mulai',
-        'berlaku_sampai',
         'dibuat_oleh',
         'keterangan',
     ];
 
     protected $casts = [
-        'berlaku_mulai' => 'date',
-        'berlaku_sampai' => 'date',
+        'tanggal' => 'date',
     ];
 
     public function karyawan()

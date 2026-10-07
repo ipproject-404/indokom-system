@@ -61,8 +61,8 @@
         ];
 
         if ($p) {
-            $masuk = \Carbon\Carbon::parse($p->tanggal . ' ' . $p->jam_masuk);
-            $pulang = $p->jam_pulang ? \Carbon\Carbon::parse($p->tanggal . ' ' . $p->jam_pulang) : null;
+            $masuk = $p->waktuMasukLengkap();
+            $pulang = $p->waktuPulangLengkap();
 
             $durasi = null;
             if ($pulang) {

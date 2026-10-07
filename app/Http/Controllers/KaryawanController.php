@@ -300,6 +300,7 @@ class KaryawanController extends Controller
             'tanggal_masuk' => 'required|date',
             'tanggal_keluar' => 'nullable|date',
             'status' => 'required|in:aktif,nonaktif',
+            'pakai_jadwal_shift' => 'nullable|boolean',
         ]);
 
         // ==========================================
@@ -316,6 +317,10 @@ class KaryawanController extends Controller
         // ==========================================
         // UPDATE KARYAWAN (LENGKAP)
         // ==========================================
+
+         $pakaiJadwalShift = $request->boolean('pakai_jadwal_shift')
+        && TipeKaryawan::find($request->tipe_karyawan_id)?->dasar_absensi === 'jadwal';
+
         $karyawan->update([
             'nik_ktp' => $request->nik_ktp,
             'nik_kerja' => $request->nik_kerja,
@@ -333,6 +338,7 @@ class KaryawanController extends Controller
             'tanggal_masuk' => $request->tanggal_masuk,
             'tanggal_keluar' => $request->tanggal_keluar,
             'status' => $request->status,
+            'pakai_jadwal_shift' => $pakaiJadwalShift,
         ]);
 
         // Jika status berubah menjadi nonaktif, sinkronkan akun user juga

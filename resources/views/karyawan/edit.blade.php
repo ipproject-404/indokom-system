@@ -318,6 +318,18 @@
                                 </select>
                             </div>
                         </div>
+                                                <div class="mt-4 flex items-start gap-3 bg-indigo-50/50 border border-indigo-100 rounded-lg p-3">
+                            <input type="hidden" name="pakai_jadwal_shift" value="0">
+                            <input type="checkbox" id="pakai_jadwal_shift" name="pakai_jadwal_shift" value="1"
+                                   class="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded"
+                                   {{ old('pakai_jadwal_shift', $karyawan->pakai_jadwal_shift) ? 'checked' : '' }}>
+                            <label for="pakai_jadwal_shift" class="cursor-pointer">
+                                <span class="block text-sm font-medium text-gray-700">Pakai jadwal shift bergilir</span>
+                                <span class="block text-[11px] text-gray-500 mt-0.5">
+                                    Jadwal diatur kepala bagian lewat menu Shift Tim. Hanya berlaku untuk tipe karyawan dengan dasar absensi "jadwal" (bulanan). Kalau tidak dicentang, karyawan memakai shift tetap.
+                                </span>
+                            </label>
+                        </div>
                     </div>
 
                     <!-- ==================== SEKSI 3: PERIODE KERJA ==================== -->

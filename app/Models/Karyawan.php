@@ -27,6 +27,11 @@ class Karyawan extends Model
         'perusahaan_id',
         'tipe_karyawan_id',
         'shift_id',
+        'pakai_jadwal_shift',
+    ];
+
+    protected $casts = [
+        'pakai_jadwal_shift' => 'boolean',
     ];
 
     public function jabatan()
@@ -82,17 +87,15 @@ class Karyawan extends Model
      */
     public function shiftPadaTanggal(\Carbon\Carbon $tanggal): ?Shift
     {
-        $jadwal = $this->jadwalShift()
-            ->where('berlaku_mulai', '<=', $tanggal->toDateString())
-            ->where(function ($q) use ($tanggal) {
-                $q->whereNull('berlaku_sampai')
-                  ->orWhere('berlaku_sampai', '>=', $tanggal->toDateString());
-            })
-            ->with('shift')
-            ->orderByDesc('berlaku_mulai')
-            ->first();
+        if ($this->pakai_jadwal_shift) {
+            return $this->jadwalShift()
+                ->with('shift')
+                ->where('tanggal', $tanggal->toDateString())
+                ->first()
+                ?->shift;
+        }
 
-        return $jadwal?->shift ?? $this->shift;
+        return $this->shift;
     }
 
     /**
