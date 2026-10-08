@@ -1,0 +1,15 @@
+server {
+    listen 8080;
+    server_name _;
+    root "C:/laragon/www/indokom-system/public";
+    index index.php index.html;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass php_upstream;
+    }
+}
