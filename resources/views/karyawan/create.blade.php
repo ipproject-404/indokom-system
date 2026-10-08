@@ -244,6 +244,34 @@
                         </div>
                     </div>
 
+                    <!-- Shift -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div id="box-shift-tetap">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Shift Tetap</label>
+                            <select name="shift_id" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white">
+                                <option value="">Tanpa shift (borongan)</option>
+                                @foreach($shifts as $s)
+                                    <option value="{{ $s->id }}" {{ old('shift_id', $shiftDefaultId) == $s->id ? 'selected' : '' }}>
+                                        {{ $s->nama_shift }} ({{ substr($s->jam_masuk, 0, 5) }} - {{ substr($s->jam_pulang_default, 0, 5) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="text-[11px] text-gray-400 mt-1"><i class="bi bi-info-circle"></i> Wajib untuk karyawan bulanan yang tidak memakai jadwal bergilir.</p>
+                        </div>
+                        <div class="flex items-start gap-3 bg-indigo-50/50 border border-indigo-100 rounded-lg p-3">
+                            <input type="hidden" name="pakai_jadwal_shift" value="0">
+                            <input type="checkbox" id="pakai_jadwal_shift" name="pakai_jadwal_shift" value="1"
+                                   class="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded"
+                                   {{ old('pakai_jadwal_shift') ? 'checked' : '' }}>
+                            <label for="pakai_jadwal_shift" class="cursor-pointer">
+                                <span class="block text-sm font-medium text-gray-700">Pakai jadwal shift bergilir</span>
+                                <span class="block text-[11px] text-gray-500 mt-0.5">
+                                    Jadwal diatur kepala bagian lewat menu Shift Tim. Hanya berlaku untuk tipe karyawan dengan dasar absensi "jadwal" (bulanan).
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- Divisi → Departemen → Jabatan -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
@@ -417,6 +445,15 @@
             @endif
         }, 500);
     @endif
+
+        // Shift tetap disembunyikan kalau pakai jadwal bergilir (tetap ikut terkirim).
+    function toggleShiftTetap() {
+        var cek = document.getElementById('pakai_jadwal_shift');
+        var box = document.getElementById('box-shift-tetap');
+        if (cek && box) box.style.display = cek.checked ? 'none' : '';
+    }
+    document.getElementById('pakai_jadwal_shift').addEventListener('change', toggleShiftTetap);
+    toggleShiftTetap();
 </script>
 </body>
 </html>

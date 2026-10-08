@@ -12,6 +12,7 @@ use App\Models\Divisi;
 use App\Models\TipeKaryawan;
 use Illuminate\Support\Str;
 use App\Models\User;
+use App\Models\Shift;
 use Illuminate\Support\Facades\Hash;
 
 class KaryawanController extends Controller
@@ -161,12 +162,14 @@ class KaryawanController extends Controller
         ));
     }
 
-    public function create()
+     public function create()
     {
         $perusahaans = Perusahaan::where('status', 'aktif')->orderBy('nama_perusahaan')->get();
         $tipeKaryawans = TipeKaryawan::all();
+        $shifts = Shift::where('status', 'aktif')->orderBy('nama_shift')->get();
+        $shiftDefaultId = $shifts->firstWhere('nama_shift', 'Reguler')?->id;
 
-        return view('karyawan.create', compact('perusahaans', 'tipeKaryawans'));
+        return view('karyawan.create', compact('perusahaans', 'tipeKaryawans', 'shifts', 'shiftDefaultId'));
     }
 
     public function store(Request $request)
@@ -187,9 +190,19 @@ class KaryawanController extends Controller
             'tipe_karyawan_id' => 'required|exists:tipe_karyawan,id',
             'departemen_id' => 'required|exists:departemen,id',
             'jabatan_id' => 'required|exists:jabatan,id',
+            'shift_id' => 'nullable|exists:shift,id',
+            'pakai_jadwal_shift' => 'nullable|boolean',
 
             'tanggal_masuk' => 'required|date',
         ]);
+
+        // Jadwal shift bergilir hanya masuk akal untuk dasar absensi 'jadwal'.
+        $tipe = TipeKaryawan::find($request->tipe_karyawan_id);
+        $pakaiJadwalShift = $request->boolean('pakai_jadwal_shift') && $tipe?->dasar_absensi === 'jadwal';
+
+        if ($pesanShift = $this->cekShift($request, $tipe, $pakaiJadwalShift)) {
+            return back()->withInput()->withErrors(['shift_id' => $pesanShift]);
+        }
 
         // Gabungkan pendidikan
         $tingkat = $request->tingkat_pendidikan;
@@ -213,6 +226,8 @@ class KaryawanController extends Controller
             'tipe_karyawan_id' => $request->tipe_karyawan_id,
             'departemen_id'    => $request->departemen_id,
             'jabatan_id'       => $request->jabatan_id,
+            'shift_id'         => $request->shift_id ?: null,
+            'pakai_jadwal_shift' => $pakaiJadwalShift,
 
             'tanggal_masuk' => $request->tanggal_masuk,
             'status' => 'aktif'
@@ -234,6 +249,7 @@ class KaryawanController extends Controller
 
         return redirect()->route('karyawan.index')->with('success', 'Data Karyawan berhasil ditambahkan!');
     }
+
 
     public function show($id)
     {
@@ -260,6 +276,7 @@ class KaryawanController extends Controller
         $karyawan = Karyawan::findOrFail($id);
         $perusahaans = Perusahaan::where('status', 'aktif')->orderBy('nama_perusahaan')->get();
         $tipeKaryawans = TipeKaryawan::all();
+        $shifts = Shift::where('status', 'aktif')->orderBy('nama_shift')->get();
 
         $divisis = Divisi::where('status', 'aktif')->orderBy('nama_divisi')->get();
         $departemens = Departemen::where('status', 'aktif')->orderBy('nama_departemen')->get();
@@ -271,7 +288,8 @@ class KaryawanController extends Controller
             'divisis',
             'departemens',
             'jabatans',
-            'tipeKaryawans'
+            'tipeKaryawans',
+            'shifts'
         ));
     }
 
@@ -297,11 +315,20 @@ class KaryawanController extends Controller
             'tipe_karyawan_id' => 'required|exists:tipe_karyawan,id',
             'departemen_id' => 'required|exists:departemen,id',
             'jabatan_id' => 'required|exists:jabatan,id',
+            'shift_id' => 'nullable|exists:shift,id',
             'tanggal_masuk' => 'required|date',
             'tanggal_keluar' => 'nullable|date',
             'status' => 'required|in:aktif,nonaktif',
             'pakai_jadwal_shift' => 'nullable|boolean',
         ]);
+
+        // Jadwal shift bergilir hanya masuk akal untuk dasar absensi 'jadwal'.
+        $tipe = TipeKaryawan::find($request->tipe_karyawan_id);
+        $pakaiJadwalShift = $request->boolean('pakai_jadwal_shift') && $tipe?->dasar_absensi === 'jadwal';
+
+        if ($pesanShift = $this->cekShift($request, $tipe, $pakaiJadwalShift)) {
+            return back()->withInput()->withErrors(['shift_id' => $pesanShift]);
+        }
 
         // ==========================================
         // GABUNGKAN PENDIDIKAN
@@ -317,10 +344,6 @@ class KaryawanController extends Controller
         // ==========================================
         // UPDATE KARYAWAN (LENGKAP)
         // ==========================================
-
-         $pakaiJadwalShift = $request->boolean('pakai_jadwal_shift')
-        && TipeKaryawan::find($request->tipe_karyawan_id)?->dasar_absensi === 'jadwal';
-
         $karyawan->update([
             'nik_ktp' => $request->nik_ktp,
             'nik_kerja' => $request->nik_kerja,
@@ -335,6 +358,7 @@ class KaryawanController extends Controller
             'tipe_karyawan_id' => $request->tipe_karyawan_id,
             'departemen_id' => $request->departemen_id,
             'jabatan_id' => $request->jabatan_id,
+            'shift_id' => $request->shift_id ?: null,
             'tanggal_masuk' => $request->tanggal_masuk,
             'tanggal_keluar' => $request->tanggal_keluar,
             'status' => $request->status,
@@ -350,6 +374,30 @@ class KaryawanController extends Controller
 
         return redirect()->route('karyawan.show', $karyawan->id)
                          ->with('success', 'Data Karyawan berhasil diperbarui!');
+    }
+
+    /**
+     * Validasi shift tetap. Return pesan error, atau null kalau lolos.
+     * - Bulanan (dasar 'jadwal') yang TIDAK bergilir wajib punya shift tetap.
+     * - Shift milik PT tertentu hanya boleh dipakai karyawan PT itu.
+     */
+    private function cekShift(Request $request, ?TipeKaryawan $tipe, bool $pakaiJadwalShift): ?string
+    {
+        $shiftId = $request->shift_id ?: null;
+
+        if ($tipe?->dasar_absensi === 'jadwal' && ! $pakaiJadwalShift && ! $shiftId) {
+            return 'Pilih shift tetap untuk karyawan bulanan ini, atau centang "Pakai jadwal shift bergilir".';
+        }
+
+        if ($shiftId) {
+            $shift = Shift::find($shiftId);
+            if ($shift && $shift->perusahaan_id !== null
+                && (int) $shift->perusahaan_id !== (int) $request->perusahaan_id) {
+                return "Shift {$shift->nama_shift} bukan milik perusahaan yang dipilih.";
+            }
+        }
+
+        return null;
     }
 
     // ==========================================

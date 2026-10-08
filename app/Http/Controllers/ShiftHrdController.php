@@ -32,6 +32,6 @@ class ShiftHrdController extends Controller
 
         $departemens = Departemen::orderBy('nama_departemen')->get();
 
-        return view('hrd.shift-karyawan', compact('karyawans', 'departemens'));
+                return view('karyawan.shift-karyawan', compact('karyawans', 'departemens'));
     }
 }

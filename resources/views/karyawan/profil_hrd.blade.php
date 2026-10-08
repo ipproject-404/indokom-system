@@ -366,13 +366,13 @@
 </div>
 
 <!-- MODAL QR CODE -->
-<div x-show="showModalQr" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4" style="display: none;" x-transition.opacity>
+<div x-show="showModalQr" x-effect="showModalQr && $nextTick(() => buatQrHrd())" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4" style="display: none;" x-transition.opacity>
     <div @click.away="showModalQr = false" class="bg-white rounded-3xl p-7 max-w-xs w-full text-center space-y-4 shadow-2xl border border-slate-100" x-transition.scale>
         <div class="text-[11px] font-black uppercase tracking-widest text-blue-600">ID Card Karyawan</div>
         <div class="text-[10px] text-slate-400 font-semibold -mt-2">Indokom System</div>
         
         <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-center shadow-inner">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data={{ $userKaryawan->barcode_uid ?? 'NO-DATA' }}" alt="QR Code" class="rounded-xl">
+         <div id="qr-hrd" data-token="{{ $userKaryawan->barcode_uid ?? '' }}"></div>
         </div>
 
         <div>
@@ -432,6 +432,26 @@
         </form>
     </div>
 </div>
+
+<script src="/js/qrcode.min.js"></script>
+<script>
+    // QR digambar di browser dari barcode_uid -- tidak ada data yang dikirim ke layanan luar.
+    function buatQrHrd() {
+        var el = document.getElementById('qr-hrd');
+        if (!el) return;
+        el.innerHTML = '';
+        if (!el.dataset.token || typeof QRCode === 'undefined') {
+            el.innerHTML = '<div class="text-xs text-rose-600">QR belum tersedia.</div>';
+            return;
+        }
+        new QRCode(el, {
+            text: el.dataset.token,
+            width: 160, height: 160,
+            colorDark: '#000000', colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+        });
+    }
+</script>
 
 </body>
 </html>

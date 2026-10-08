@@ -85,6 +85,9 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     // Profil
     Route::get('/hrd/profil', [ProfilController::class, 'index'])->name('profile.index');
     Route::post('/hrd/profil/update-password', [ProfilController::class, 'updatePassword'])->name('profile.update-password');
+
+        // Shift karyawan (hanya lihat; shift diatur kepala bagian)
+    Route::get('/hrd/shift', [ShiftHrdController::class, 'index'])->name('shift.hrd.index');
 });
 
 Route::middleware(['auth', 'role:karyawan,hrd', 'kepala.bagian'])->group(function () {
@@ -93,4 +96,3 @@ Route::middleware(['auth', 'role:karyawan,hrd', 'kepala.bagian'])->group(functio
     Route::post('/shift-tim/tukar', [ShiftTimController::class, 'tukar'])->name('shift-tim.tukar');
 });
 
-Route::get('/hrd/shift', [ShiftHrdController::class, 'index'])->name('shift.hrd.index');

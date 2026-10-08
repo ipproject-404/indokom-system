@@ -6,10 +6,15 @@
 
 @php
     // Data menu dipakai bareng oleh versi HP maupun Desktop
+        $isKepalaBagian = $karyawan && $karyawan->departemenYangDipimpin()->isNotEmpty();
+
+    // Data menu dipakai bareng oleh versi HP maupun Desktop
     $menuAplikasi = [
         ['icon' => 'bi-calendar-check', 'label' => 'Absensi', 'warna' => '#f59e0b', 'link' => route('absensi.scan')],
         ['icon' => 'bi-people', 'label' => 'Kehadiran', 'warna' => '#16a34a', 'link' => '#'],
-        ['icon' => 'bi-award', 'label' => 'Talent', 'warna' => '#ec4899', 'link' => '#'],
+        $isKepalaBagian
+            ? ['icon' => 'bi-calendar-range', 'label' => 'Shift Tim', 'warna' => '#ec4899', 'link' => route('shift-tim.index')]
+            : ['icon' => 'bi-award', 'label' => 'Talent', 'warna' => '#ec4899', 'link' => '#'],
         ['icon' => 'bi-file-earmark-text', 'label' => 'Report', 'warna' => '#2563eb', 'link' => '#'],
         ['icon' => 'bi-grid-3x3-gap', 'label' => 'Spaces', 'warna' => '#f97316', 'link' => '#'],
         ['icon' => 'bi-clock-history', 'label' => 'Lembur', 'warna' => '#16a34a', 'link' => '#'],
@@ -37,10 +42,9 @@
     $sudahPulang = (bool) $presensiHariIni?->jam_pulang;
     $absenSelesai = $sudahMasuk && $sudahPulang;
 
-   // $batasAbsenPulang = $presensiHariIni->waktuMasukLengkap()->addHour();
     $bolehAbsenPulang = true;
     if ($sudahMasuk && !$sudahPulang) {
-        $batasAbsenPulang = \Carbon\Carbon::parse($presensiHariIni->tanggal . ' ' . $presensiHariIni->jam_masuk)->addHour();
+        $batasAbsenPulang = $presensiHariIni->waktuMasukLengkap()->addHour();
         $bolehAbsenPulang = \Carbon\Carbon::now()->greaterThanOrEqualTo($batasAbsenPulang);
     }
 
