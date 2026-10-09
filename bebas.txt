@@ -13,3 +13,23 @@ server {
         fastcgi_pass php_upstream;
     }
 }
+@echo off
+set PATH=C:\laragon\bin\php\php-8.3.x-Win32-vs16-x64;C:\laragon\bin\composer;C:\Program Files\Git\cmd;%PATH%
+set LOG=C:\laragon\deploy.log
+
+cd /d C:\laragon\www\indokom-system
+
+git fetch origin main
+for /f %%i in ('git rev-parse HEAD') do set LOCAL=%%i
+for /f %%i in ('git rev-parse origin/main') do set REMOTE=%%i
+
+if "%LOCAL%"=="%REMOTE%" exit /b
+
+echo [%date% %time%] Deploy mulai >> %LOG%
+git pull origin main >> %LOG% 2>&1
+call composer install --no-dev --optimize-autoloader --no-interaction >> %LOG% 2>&1
+php artisan migrate --force >> %LOG% 2>&1
+php artisan config:cache >> %LOG% 2>&1
+php artisan route:cache >> %LOG% 2>&1
+php artisan view:cache >> %LOG% 2>&1
+echo [%date% %time%] Deploy selesai >> %LOG%
