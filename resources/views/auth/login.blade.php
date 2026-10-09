@@ -115,7 +115,7 @@
                 <div class="icon-box mx-auto mb-3">
                     <i class="bi bi-buildings text-white" style="font-size:24px;"></i>
                 </div>
-                <h5 class="fw-bold mb-1" style="color: var(--dark-text);">ABDUK</h5>
+                <h5 class="fw-bold mb-1" style="color: var(--dark-text);">ABDUK muluk</h5>
                 <p class="text-muted mb-0" style="font-size: 0.85rem;">Silakan login untuk mengelola kehadiran</p>
             </div>
 
