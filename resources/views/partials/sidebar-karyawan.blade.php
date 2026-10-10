@@ -43,6 +43,20 @@
             ['label' => 'Shift Tim', 'icon' => 'bi-calendar-range', 'route' => 'shift-tim.index', 'aktif' => ['shift-tim.index']],
         ];
     }
+
+    if ($karyawanSb && $karyawanSb->boleh_lembur) {
+        array_splice($bagianSb['Aktivitas Saya'], 3, 0, [
+            ['label' => 'Lembur', 'icon' => 'bi-clock-history', 'route' => 'lembur.karyawan', 'aktif' => ['lembur.karyawan']],
+        ]);
+    }
+
+    // Menu payroll hanya untuk yang punya hak payroll.
+    if ($karyawanSb && $karyawanSb->punyaHak('payroll')) {
+        $bagianSb['Payroll'] = [
+            ['label' => 'Persetujuan Lembur', 'icon' => 'bi-file-earmark-check', 'route' => 'lembur.payroll', 'aktif' => ['lembur.payroll']],
+        ];
+    }
+    
 @endphp
 
 @push('styles')

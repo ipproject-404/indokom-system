@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureRoleIs::class,
             'kepala.bagian' => \App\Http\Middleware\EnsureKepalaBagian::class,
+            'hak' => \App\Http\Middleware\EnsureHakAkses::class,
         ]);
         $middleware->trustProxies(at: '*');
     })

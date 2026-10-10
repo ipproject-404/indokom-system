@@ -10,7 +10,12 @@ use App\Http\Controllers\ProfilController;
 use App\Http\Controllers\RekapAbsensiController;
 use App\Http\Controllers\ShiftTimController;
 use App\Http\Controllers\ShiftHrdController;
+use App\Http\Controllers\LemburKaryawanController;
+use App\Http\Controllers\LemburPayrollController;
+
+
 use Illuminate\Support\Facades\Route;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -94,5 +99,18 @@ Route::middleware(['auth', 'role:karyawan,hrd', 'kepala.bagian'])->group(functio
     Route::get('/shift-tim', [ShiftTimController::class, 'index'])->name('shift-tim.index');
     Route::post('/shift-tim', [ShiftTimController::class, 'store'])->name('shift-tim.store');
     Route::post('/shift-tim/tukar', [ShiftTimController::class, 'tukar'])->name('shift-tim.tukar');
+});
+
+// --- Lembur sisi karyawan & payroll ---
+Route::middleware(['auth', 'role:karyawan,hrd'])->group(function () {
+    Route::get('/lembur-karyawan', [LemburKaryawanController::class, 'index'])->name('lembur.karyawan');
+    Route::post('/lembur-karyawan', [LemburKaryawanController::class, 'store'])->name('lembur.karyawan.store');
+    Route::delete('/lembur-karyawan/{id}', [LemburKaryawanController::class, 'batal'])->name('lembur.karyawan.batal');
+});
+
+Route::middleware(['auth', 'role:karyawan,hrd', 'hak:payroll'])->group(function () {
+    Route::get('/lembur-payroll', [LemburPayrollController::class, 'index'])->name('lembur.payroll');
+    Route::post('/lembur-payroll/{id}/setujui', [LemburPayrollController::class, 'setujui'])->name('lembur.payroll.setujui');
+    Route::post('/lembur-payroll/{id}/tolak', [LemburPayrollController::class, 'tolak'])->name('lembur.payroll.tolak');
 });
 

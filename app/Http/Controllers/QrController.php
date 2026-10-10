@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Karyawan;
 use App\Models\Presensi;
+use App\Models\Lembur;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -144,6 +145,7 @@ class QrController extends Controller
                     'jarak_pulang_meter' => round($jarakMeter, 2),
                     'status_radius_pulang' => $statusRadius,
                 ]);
+                Lembur::isiDariPresensi($presensi);
 
                 $pesan = 'Absen pulang berhasil dicatat pukul ' . $sekarang->format('H:i:s') . '.';
             }

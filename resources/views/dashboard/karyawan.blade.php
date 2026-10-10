@@ -7,6 +7,7 @@
 @php
     // Data menu dipakai bareng oleh versi HP maupun Desktop
         $isKepalaBagian = $karyawan && $karyawan->departemenYangDipimpin()->isNotEmpty();
+        $isPayroll = $karyawan && $karyawan->punyaHak('payroll');
 
     // Data menu dipakai bareng oleh versi HP maupun Desktop
     $menuAplikasi = [
@@ -17,7 +18,7 @@
             : ['icon' => 'bi-award', 'label' => 'Talent', 'warna' => '#ec4899', 'link' => '#'],
         ['icon' => 'bi-file-earmark-text', 'label' => 'Report', 'warna' => '#2563eb', 'link' => '#'],
         ['icon' => 'bi-grid-3x3-gap', 'label' => 'Spaces', 'warna' => '#f97316', 'link' => '#'],
-        ['icon' => 'bi-clock-history', 'label' => 'Lembur', 'warna' => '#16a34a', 'link' => '#'],
+                ['icon' => 'bi-clock-history', 'label' => 'Lembur', 'warna' => '#16a34a', 'link' => $karyawan?->boleh_lembur ? route('lembur.karyawan') : '#'],
         ['icon' => 'bi-cash-coin', 'label' => 'Reimburse', 'warna' => '#ec4899', 'link' => '#'],
         ['icon' => 'bi-car-front', 'label' => 'Fasilitas', 'warna' => '#2563eb', 'link' => '#'],
     ];
@@ -217,6 +218,19 @@
                 <div class="flex-grow-1">
                     <div class="fw-bold" style="color:#1e293b;font-size:.88rem;">Dashboard HRD</div>
                     <div class="text-muted" style="font-size:.74rem;">Kelola karyawan, kehadiran, dan lembur</div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+            </a>
+        @endif
+
+                @if ($isPayroll)
+            <a href="{{ route('lembur.payroll') }}" class="modern-card d-flex align-items-center gap-3 p-3 mb-4 text-decoration-none">
+                <div style="width:40px;height:40px;background:#f0fdf4;color:#16a34a;display:flex;align-items:center;justify-content:center;border-radius:12px;flex-shrink:0;">
+                    <i class="bi bi-file-earmark-check"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-bold" style="color:#1e293b;font-size:.88rem;">Persetujuan Lembur</div>
+                    <div class="text-muted" style="font-size:.74rem;">Cocokkan surat lembur dengan pengajuan</div>
                 </div>
                 <i class="bi bi-chevron-right text-muted"></i>
             </a>

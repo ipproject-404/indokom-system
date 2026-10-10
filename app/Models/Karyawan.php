@@ -28,10 +28,12 @@ class Karyawan extends Model
         'tipe_karyawan_id',
         'shift_id',
         'pakai_jadwal_shift',
+        'boleh_lembur',
     ];
 
     protected $casts = [
         'pakai_jadwal_shift' => 'boolean',
+        'boleh_lembur' => 'boolean',
     ];
 
     public function jabatan()
@@ -121,4 +123,20 @@ class Karyawan extends Model
 
         return $token;
     }
+
+    public function lembur()
+    {
+        return $this->hasMany(Lembur::class);
+    }
+
+    public function hakAkses()
+    {
+        return $this->hasMany(HakAkses::class);
+    }
+
+    /** Cek hak khusus (contoh: 'payroll'). Lihat tabel hak_akses. */
+    public function punyaHak(string $hak): bool
+    {
+        return $this->hakAkses()->where('hak', $hak)->exists();
+    }   
 }
