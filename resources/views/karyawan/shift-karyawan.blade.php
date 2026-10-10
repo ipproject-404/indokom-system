@@ -11,58 +11,7 @@
 
 <div class="flex min-h-screen bg-gray-50">
 
-    <!-- SIDEBAR (sama seperti halaman HRD lain -- lihat catatan di bawah untuk menambahkan link ke sini di sidebar yang sudah ada) -->
-    <aside id="sidebar" class="bg-white border-r border-gray-200 flex flex-col w-[260px] shrink-0">
-        <div class="p-4 border-b border-gray-200">
-            <div class="flex items-center">
-                <div class="bg-blue-600 text-white rounded-lg flex items-center justify-center mr-3 w-[42px] h-[42px] shrink-0">
-                    <i class="bi bi-person-badge-fill text-xl"></i>
-                </div>
-                <div>
-                    <div class="font-bold text-blue-600">Portal HRD</div>
-                    <div class="text-xs text-gray-500">Presensi & Kinerja</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="p-4 grow overflow-y-auto">
-            <div class="uppercase text-gray-400 text-xs font-bold mb-3 mt-2">Menu Utama</div>
-            <a href="{{ route('dashboard.hrd') }}" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <i class="bi bi-grid-1x2-fill mr-3"></i>
-                <span class="text-sm font-medium">Dashboard</span>
-            </a>
-
-            <div class="uppercase text-gray-400 text-xs font-bold mb-3 mt-6">Kelola Karyawan</div>
-            <a href="{{ route('karyawan.index') }}" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <i class="bi bi-people-fill mr-3"></i>
-                <span class="text-sm font-medium">Daftar Karyawan</span>
-            </a>
-            <a href="{{ route('jabatan.departemen.index') }}" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <i class="bi bi-diagram-3-fill mr-3"></i>
-                <span class="text-sm font-medium">Jabatan & Departemen</span>
-            </a>
-
-            <div class="uppercase text-gray-400 text-xs font-bold mb-3 mt-6">Kehadiran & QR</div>
-            <a href="{{ route('karyawan.qr.index') }}" class="flex items-center text-gray-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <i class="bi bi-qr-code-scan mr-3"></i>
-                <span class="text-sm font-medium">Manajemen QR Code</span>
-            </a>
-            <!-- Menu Shift Karyawan Aktif -->
-            <a href="{{ route('shift.hrd.index') }}" class="flex items-center bg-blue-600 text-white rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <i class="bi bi-calendar-range mr-3"></i>
-                <span class="text-sm font-medium">Shift Karyawan</span>
-            </a>
-
-            <div class="uppercase text-gray-400 text-xs font-bold mb-3 mt-6">Akun</div>
-            <form method="POST" action="{{ route('logout') }}" class="mt-2">
-                @csrf
-                <button type="submit" class="w-full flex items-center text-red-600 hover:bg-red-50 rounded-lg px-4 py-2.5 transition-colors">
-                    <i class="bi bi-box-arrow-left mr-3"></i>
-                    <span class="text-sm font-medium">Logout</span>
-                </button>
-            </form>
-        </div>
-    </aside>
+    @include('partials.sidebar-hrd')
 
     <!-- MAIN CONTENT -->
     <main class="grow flex flex-col min-w-0">

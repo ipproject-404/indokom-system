@@ -18,98 +18,13 @@
 
 <div class="flex min-h-screen">
 
-    <!-- =========================
-         SIDEBAR (Konsisten dengan halaman lain)
-    ========================== -->
-    <aside id="sidebar" class="w-[260px] bg-white border-r border-slate-200 flex flex-col shrink-0 sticky top-0 h-screen">
-        <div class="p-4 border-b border-slate-200">
-            <div class="flex items-center">
-                <div class="bg-blue-600 text-white rounded-lg flex items-center justify-center mr-3 w-[42px] h-[42px] shrink-0">
-                    <i class="bi bi-building-fill text-xl"></i>
-                </div>
-                <div>
-                    <div class="font-bold text-blue-600">Indokom System</div>
-                    <div class="text-xs text-slate-500">Presensi & Kinerja</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="p-4 grow overflow-y-auto">
-            <div class="uppercase text-slate-400 text-xs font-bold mb-3 mt-2">Menu Utama</div>
-            <a href="{{ route('dashboard.hrd') }}" class="flex items-center text-slate-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <i class="bi bi-grid-1x2-fill mr-3"></i>
-                <span class="text-sm font-medium">Dashboard</span>
-            </a>
-
-            <div class="uppercase text-slate-400 text-xs font-bold mb-3 mt-6">Kelola Karyawan</div>
-            <a href="{{ route('karyawan.index') }}" class="flex items-center text-slate-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <i class="bi bi-people-fill mr-3"></i>
-                <span class="text-sm font-medium">Daftar Karyawan</span>
-            </a>
-            <a href="{{ route('karyawan.create') }}" class="flex items-center text-slate-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <i class="bi bi-person-plus-fill mr-3"></i>
-                <span class="text-sm font-medium">Tambah Karyawan</span>
-            </a>
-            <a href="{{ route('jabatan.departemen.index') }}" class="flex items-center text-slate-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <i class="bi bi-diagram-3-fill mr-3"></i>
-                <span class="text-sm font-medium">Jabatan & Departemen</span>
-            </a>
-
-            <div class="uppercase text-slate-400 text-xs font-bold mb-3 mt-6">Kehadiran & QR</div>
-            <a href="{{ route('karyawan.qr.index') }}" class="flex items-center text-slate-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <i class="bi bi-qr-code-scan mr-3"></i>
-                <span class="text-sm font-medium">Manajemen QR Code</span>
-            </a>
-            <a href="{{ route('kehadiran.log') }}" class="flex items-center text-slate-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <i class="bi bi-calendar-check mr-3"></i>
-                <span class="text-sm font-medium">Log Kehadiran Harian</span>
-            </a>
-            <a href="{{ route('lembur.pengajuan') }}" class="flex items-center justify-between text-slate-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <div class="flex items-center">
-                    <i class="bi bi-file-earmark-plus mr-3"></i>
-                    <span class="text-sm font-medium">Pengajuan Lembur</span>
-                </div>
-                @if(isset($lemburMenunggu) && $lemburMenunggu > 0)
-                    <span class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $lemburMenunggu }}</span>
-                @endif
-            </a>
-
-            <div class="uppercase text-slate-400 text-xs font-bold mb-3 mt-6">Akun</div>
-            <!-- Menu Profil Aktif -->
-            <a href="{{ route('profile.index') }}" class="flex items-center bg-blue-600 text-white rounded-lg px-4 py-2.5 mb-1 transition-colors">
-                <i class="bi bi-person-circle mr-3"></i>
-                <span class="text-sm font-medium">Profil Saya</span>
-            </a>
-            <form method="POST" action="{{ route('logout') }}" class="mt-2">
-                @csrf
-                <button type="submit" class="w-full flex items-center text-red-600 hover:bg-red-50 rounded-lg px-4 py-2.5 transition-colors">
-                    <i class="bi bi-box-arrow-left mr-3"></i>
-                    <span class="text-sm font-medium">Logout</span>
-                </button>
-            </form>
-        </div>
-
-        <!-- Info User -->
-        @php
-            $userKaryawan = Auth::user()->karyawan ?? null;
-            $namaTampil = $userKaryawan->nama_lengkap ?? (Auth::user()->name ?? '-');
-            $jabatanTampil = optional($userKaryawan->jabatan ?? null)->nama_jabatan ?? '-';
-            $departemenTampil = optional($userKaryawan->departemen ?? null)->nama_departemen ?? '-';
-        @endphp
-        <div class="border-t border-slate-200 p-4 bg-slate-50">
-            <div class="flex items-center">
-                <div class="bg-blue-600 text-white rounded-full flex items-center justify-center mr-3 w-10 h-10 shrink-0 font-bold shadow-sm">
-                    {{ strtoupper(substr($namaTampil, 0, 2)) }}
-                </div>
-                <div class="overflow-hidden">
-                    <div class="font-bold text-sm text-slate-800 truncate" title="{{ $namaTampil }}">{{ $namaTampil }}</div>
-                    <div class="text-xs text-blue-600 font-semibold truncate" title="{{ $jabatanTampil }} • {{ $departemenTampil }}">
-                        {{ $jabatanTampil }} &bull; {{ $departemenTampil }}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </aside>
+    @php
+    $userKaryawan = Auth::user()->karyawan ?? null;
+    $namaTampil = $userKaryawan->nama_lengkap ?? (Auth::user()->name ?? '-');
+    $jabatanTampil = optional($userKaryawan->jabatan ?? null)->nama_jabatan ?? '-';
+    $departemenTampil = optional($userKaryawan->departemen ?? null)->nama_departemen ?? '-';
+@endphp
+@include('partials.sidebar-hrd')
 
     <!-- =========================
          MAIN CONTENT

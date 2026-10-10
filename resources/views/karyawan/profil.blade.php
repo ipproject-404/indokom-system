@@ -71,7 +71,7 @@
         background: #ffffff;
         min-height: 100vh;
         box-shadow: none;
-        padding-bottom: 90px;
+        padding: 10px 10px 90px 10px;
         position: relative;
     }
     .mobile-shell .app-header {
@@ -106,7 +106,7 @@
 
     /* ===== ID CARD (dipakai versi HP & desktop) ===== */
     /* Versi HP: menempel penuh ke tepi layar & header, sudut membulat di bawah */
-    .id-card-full { border-radius: 0 0 26px 26px !important; margin-top: -1rem; padding-top: 22px; }
+    .id-card-full { border-radius: 26px !important; margin-top: -1rem; padding-top: 22px; }
     .id-card {
         position: relative;
         border-radius: 22px;
