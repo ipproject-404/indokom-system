@@ -28,7 +28,7 @@
     body { background-color: #f1f5f9; font-family: 'Inter', 'Segoe UI', sans-serif; }
     .app-shell { max-width: none; margin: 0; box-shadow: none; padding-bottom: 0; }
 
-    .mobile-shell { width: 100%; max-width: 100%; margin: 0; background: #ffffff; min-height: 100vh; box-shadow: none; padding-bottom: 40px; }
+    .mobile-shell { width: 100%; max-width: 100%; margin: 0; background: #ffffff; min-height: 100vh; box-shadow: none; padding-bottom: 90px; }
     .mobile-shell .app-header {
         background: #fff; padding: 1.1rem 1rem; border-bottom: 1px solid #e2e8f0;
         position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px;
@@ -138,6 +138,7 @@
             </div>
         @endforelse
     </div>
+        @include('partials.bottom-nav-karyawan')
 </div>
 
 {{-- ================= VERSI DESKTOP ================= --}}

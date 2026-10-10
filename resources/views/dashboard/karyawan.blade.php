@@ -141,22 +141,7 @@
         margin-bottom: 8px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
-    .mobile-shell .bottom-nav {
-        position: fixed;
-        bottom: 0; left: 50%;
-        transform: translateX(-50%);
-        width: 100%; max-width: 480px;
-        background: white;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
-        border-top: 1px solid #e2e8f0;
-        padding: 0.5rem 0;
-    }
-    .mobile-shell .bottom-nav a, .mobile-shell .bottom-nav button {
-        display: flex; flex-direction: column; align-items: center;
-        font-size: 0.7rem; color: #94a3b8; text-decoration: none; border: none; background: none;
-    }
-    .mobile-shell .bottom-nav a.active, .mobile-shell .bottom-nav a:hover { color: #0d6efd; }
-    .mobile-shell .bottom-nav i { font-size: 1.3rem; margin-bottom: 2px; }
+ 
 </style>
 
 <div class="mobile-shell d-lg-none">
@@ -264,15 +249,7 @@
         </div>
     </div>
 
-    <nav class="bottom-nav">
-        <div class="row text-center gx-0">
-            <div class="col"><a href="{{ route('dashboard.karyawan') }}" class="active"><i class="bi bi-house-fill"></i> Beranda</a></div>
-            <div class="col"><a href="#"><i class="bi bi-check2-square"></i> Aktivitas</a></div>
-            <div class="col"><a href="{{ route('absensi.karyawan') }}"><i class="bi bi-calendar-check"></i> Absensi</a></div>
-            <div class="col"><a href="#"><i class="bi bi-mortarboard"></i> Pelatihan</a></div>
-            <div class="col"><a href="{{ route('profil.karyawan') }}"><i class="bi bi-person-circle"></i> Profil</a></div>
-        </div>
-    </nav>
+        @include('partials.bottom-nav-karyawan')
 </div>
 
 
@@ -471,49 +448,7 @@
 
 <div class="desktop-shell">
 
-    <aside class="desktop-sidebar">
-        <div class="brand">
-            <div><i class="bi bi-qr-code-scan me-1"></i> Indokom Group</div>
-            <small>Absensi &amp; Aktivitas Karyawan</small>
-        </div>
-
-        <div class="nav-section-title">Menu Utama</div>
-        <a href="{{ route('dashboard.karyawan') }}" class="active"><i class="bi bi-house-fill"></i> Dashboard</a>
-
-        <div class="nav-section-title">Aktivitas Saya</div>
-        <a href="#"><i class="bi bi-check2-square"></i> Aktivitas</a>
-        <a href="{{ route('absensi.karyawan') }}"><i class="bi bi-calendar-check"></i> Absensi</a>
-        <a href="#"><i class="bi bi-mortarboard"></i> Pelatihan</a>
-
-        @if ($isHrd)
-            <div class="nav-section-title">Khusus HRD</div>
-            <a href="{{ route('dashboard.hrd') }}"><i class="bi bi-grid-1x2-fill"></i> Dashboard HRD</a>
-        @endif
-
-        <div class="nav-section-title">Menu Aplikasi</div>
-        @foreach ($menuAplikasi as $item)
-            <a href="{{ $item['link'] }}">
-                <span class="menu-icon-small" style="background: {{ $item['warna'] }};">
-                    <i class="bi {{ $item['icon'] }}"></i>
-                </span>
-                {{ $item['label'] }}
-            </a>
-        @endforeach
-
-        <div class="sidebar-profile">
-            <a href="{{ route('profil.karyawan') }}" class="sidebar-profile">
-    <div class="avatar"><i class="bi bi-person-fill"></i></div>
-    <div>
-        <div class="nama">{{ $namaTampil }}</div>
-        <div class="peran">{{ $jabatanTampil }}</div>
-    </div>
-</a>
-        </div>
-        <form method="POST" action="{{ route('logout') }}" class="m-0 p-0">
-            @csrf
-            <button type="submit"><i class="bi bi-box-arrow-right"></i> Keluar</button>
-        </form>
-    </aside>
+       @include('partials.sidebar-karyawan', ['menuAplikasi' => $menuAplikasi])
 
     <main class="desktop-main">
 

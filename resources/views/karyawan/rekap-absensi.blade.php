@@ -24,16 +24,10 @@
         ->implode('');
 
     $namaHari = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-
-    // Detail per tanggal yang dikirim ke JS lewat atribut data-detail
-    // (dipakai saat kotak tanggal di kalender diklik).
     $buatDetail = function (array $hari) use ($statusInfo) {
         $p = $hari['presensi'];
         $info = $statusInfo[$hari['status']];
 
-        // Di dalam radius kantor: "Nama PT, Nama Jalan". Di luar radius
-        // (misal tugas luar): cukup nama jalannya saja. Nama PT tersimpan
-        // di kolom alamat_* saat absen di dalam radius (lihat QrController).
         $teksMenit = function (?int $m) {
             if ($m === null) return null;
             if ($m < 60) return $m . ' menit';
@@ -87,9 +81,6 @@
     };
 @endphp
 
-{{-- ================================================================
-     VERSI HP (hanya muncul di layar < 992px)
-================================================================ --}}
 <style>
     html, body { margin: 0; padding: 0; width: 100%; overflow-x: hidden; }
     body { background-color: #f1f5f9; font-family: 'Inter', 'Segoe UI', sans-serif; }
@@ -218,23 +209,7 @@
     }
     .legenda-item i { font-size: 0.85rem; width: 18px; text-align: center; }
 
-    .mobile-shell .bottom-nav {
-        position: fixed;
-        bottom: 0; left: 50%;
-        transform: translateX(-50%);
-        width: 100%; max-width: 480px;
-        background: white;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
-        border-top: 1px solid #e2e8f0;
-        padding: 0.5rem 0;
-    }
-    .mobile-shell .bottom-nav a, .mobile-shell .bottom-nav button {
-        display: flex; flex-direction: column; align-items: center;
-        font-size: 0.7rem; color: #94a3b8; text-decoration: none; border: none; background: none;
-        width: 100%;
-    }
-    .mobile-shell .bottom-nav a.active { color: #0d6efd; }
-    .mobile-shell .bottom-nav i { font-size: 1.3rem; margin-bottom: 2px; }
+   
 </style>
 
 <div class="mobile-shell d-lg-none">
@@ -315,15 +290,7 @@
 
     </div>
 
-    <nav class="bottom-nav">
-        <div class="row text-center gx-0">
-            <div class="col"><a href="{{ route('dashboard.karyawan') }}"><i class="bi bi-house-fill"></i> Beranda</a></div>
-            <div class="col"><a href="#"><i class="bi bi-check2-square"></i> Aktivitas</a></div>
-            <div class="col"><a href="{{ route('absensi.karyawan') }}" class="active"><i class="bi bi-calendar-check"></i> Absensi</a></div>
-            <div class="col"><a href="#"><i class="bi bi-mortarboard"></i> Pelatihan</a></div>
-            <div class="col"><a href="{{ route('profil.karyawan') }}"><i class="bi bi-person-circle"></i> Profil</a></div>
-        </div>
-    </nav>
+        @include('partials.bottom-nav-karyawan')
 </div>
 
 {{-- ================================================================
@@ -430,38 +397,7 @@
 
 <div class="desktop-shell">
 
-    <aside class="desktop-sidebar">
-        <div class="brand">
-            <div><i class="bi bi-qr-code-scan me-1"></i> Presensi App</div>
-            <small>Absensi &amp; Aktivitas Karyawan</small>
-        </div>
-
-        <div class="nav-section-title">Menu Utama</div>
-        <a href="{{ route('dashboard.karyawan') }}"><i class="bi bi-house-fill"></i> Dashboard</a>
-
-        <div class="nav-section-title">Aktivitas Saya</div>
-        <a href="#"><i class="bi bi-check2-square"></i> Aktivitas</a>
-        <a href="{{ route('absensi.karyawan') }}" class="active"><i class="bi bi-calendar-check"></i> Absensi</a>
-        <a href="#"><i class="bi bi-mortarboard"></i> Pelatihan</a>
-        <a href="{{ route('profil.karyawan') }}"><i class="bi bi-person-circle"></i> Profil Saya</a>
-
-        @if ($karyawan && $karyawan->departemenYangDipimpin()->isNotEmpty())
-            <div class="nav-section-title">Kepala Bagian</div>
-            <a href="{{ route('shift-tim.index') }}"><i class="bi bi-calendar-range"></i> Shift Tim</a>
-        @endif
-
-        <a href="{{ route('profil.karyawan') }}" class="sidebar-profile">
-            <div class="avatar">{{ $inisial ?: '?' }}</div>
-            <div>
-                <div class="nama">{{ $namaTampil }}</div>
-                <div class="peran">{{ $jabatanTampil }}</div>
-            </div>
-        </a>
-        <form method="POST" action="{{ route('logout') }}" class="m-0 p-0">
-            @csrf
-            <button type="submit"><i class="bi bi-box-arrow-right"></i> Keluar</button>
-        </form>
-    </aside>
+        @include('partials.sidebar-karyawan')
 
     <main class="desktop-main">
 
