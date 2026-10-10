@@ -88,56 +88,210 @@ class KaryawanController extends Controller
             $query->where('status', $request->status);
         }
 
-        // EXPORT EXCEL
+        // ==========================================
+        // EXPORT EXCEL (XLS - merge bertingkat 3 level)
+        // ==========================================
         if ($request->has('export') && $request->export == 'excel') {
-            $karyawans = $query->orderBy('nama_lengkap', 'asc')->get();
 
-            $filename = "Data_Karyawan_" . date('Y-m-d_H-i-s') . ".csv";
-            $headers = [
-                "Content-type"        => "text/csv",
-                "Content-Disposition" => "attachment; filename=$filename",
-            ];
+            // ⭐ Ambil data & sort pakai collection (agar bisa akses relasi divisi)
+            $karyawans = $query->get();
 
-            $columns = [
-                'No', 'NIK KTP', 'NIK Kerja', 'Nama Lengkap',
-                'Perusahaan', 'Divisi', 'Departemen', 'Jabatan',
-                'Tipe Karyawan', 'JK', 'No HP', 'Pendidikan',
-                'Tgl Lahir', 'Umur', 'Status', 'Tanggal Masuk'
-            ];
+            $karyawans = $karyawans->sortBy(function ($k) {
+                return sprintf(
+                    '%08d|%08d|%08d|%s',
+                    $k->perusahaan_id ?? 0,
+                    $k->departemen->divisi_id ?? 0,
+                    $k->departemen_id ?? 0,
+                    strtolower($k->nama_lengkap ?? '')
+                );
+            })->values();
 
-            $callback = function () use ($karyawans, $columns) {
-                $file = fopen('php://output', 'w');
-                fputcsv($file, $columns, ';');
+            $total = $karyawans->count();
 
-                $no = 1;
-                foreach ($karyawans as $kry) {
-                    $umur = $kry->tanggal_lahir
-                        ? \Carbon\Carbon::parse($kry->tanggal_lahir)->age
-                        : '-';
+            // ============= PRECOMPUTE ROWSPAN =============
+            $rowspanPT   = [];
+            $rowspanDiv  = [];
+            $rowspanDept = [];
 
-                    fputcsv($file, [
-                        $no++,
-                        "'" . $kry->nik_ktp,
-                        "'" . $kry->nik_kerja,
-                        $kry->nama_lengkap,
-                        $kry->perusahaan->nama_perusahaan ?? '-',
-                        $kry->departemen->divisi->nama_divisi ?? '-',
-                        $kry->departemen->nama_departemen ?? '-',
-                        $kry->jabatan->nama_jabatan ?? '-',
-                        $kry->tipeKaryawan->nama ?? '-',
-                        $kry->jenis_kelamin == 'L' ? 'L' : 'P',
-                        "'" . $kry->no_hp,
-                        $kry->pendidikan ?? '-',
-                        $kry->tanggal_lahir ?? '-',
-                        $umur,
-                        strtoupper($kry->status),
-                        $kry->tanggal_masuk
-                    ], ';');
+            for ($i = 0; $i < $total; $i++) {
+                $cur  = $karyawans[$i];
+                $prev = $i > 0 ? $karyawans[$i - 1] : null;
+
+                $curPT   = $cur->perusahaan_id;
+                $curDiv  = $cur->departemen->divisi_id ?? 0;
+                $curDept = $cur->departemen_id;
+
+                // ---- Level 1: PT ----
+                if ($prev === null || $prev->perusahaan_id != $curPT) {
+                    $count = 0;
+                    for ($j = $i; $j < $total; $j++) {
+                        if ($karyawans[$j]->perusahaan_id == $curPT) $count++;
+                        else break;
+                    }
+                    $rowspanPT[$i] = $count;
+                } else {
+                    $rowspanPT[$i] = 0;
                 }
-                fclose($file);
-            };
 
-            return response()->stream($callback, 200, $headers);
+                // ---- Level 2: Divisi (dalam PT yang sama) ----
+                if ($prev === null
+                    || $prev->perusahaan_id != $curPT
+                    || ($prev->departemen->divisi_id ?? 0) != $curDiv) {
+                    $count = 0;
+                    for ($j = $i; $j < $total; $j++) {
+                        if ($karyawans[$j]->perusahaan_id == $curPT
+                            && ($karyawans[$j]->departemen->divisi_id ?? 0) == $curDiv) {
+                            $count++;
+                        } else break;
+                    }
+                    $rowspanDiv[$i] = $count;
+                } else {
+                    $rowspanDiv[$i] = 0;
+                }
+
+                // ---- Level 3: Departemen (dalam PT + Divisi yang sama) ----
+                if ($prev === null
+                    || $prev->perusahaan_id != $curPT
+                    || ($prev->departemen->divisi_id ?? 0) != $curDiv
+                    || $prev->departemen_id != $curDept) {
+                    $count = 0;
+                    for ($j = $i; $j < $total; $j++) {
+                        if ($karyawans[$j]->perusahaan_id == $curPT
+                            && ($karyawans[$j]->departemen->divisi_id ?? 0) == $curDiv
+                            && $karyawans[$j]->departemen_id == $curDept) {
+                            $count++;
+                        } else break;
+                    }
+                    $rowspanDept[$i] = $count;
+                } else {
+                    $rowspanDept[$i] = 0;
+                }
+            }
+
+            // ============= STYLE =============
+            $filename = "Data_Karyawan_" . date('Y-m-d_H-i-s') . ".xls";
+
+            $styleThBase       = "border:1px solid #FFFFFF; padding:8px 6px; background-color:#1E3A8A; color:#FFFFFF; font-weight:bold; text-align:center; vertical-align:middle; font-family:Calibri; font-size:11pt;";
+            $styleTdBase       = "border:1px solid #94A3B8; padding:6px 8px; vertical-align:middle; font-family:Calibri; font-size:11pt;";
+            $styleTdMerged     = "border:1px solid #94A3B8; padding:6px 8px; vertical-align:middle; text-align:center; font-weight:bold; font-family:Calibri; font-size:11pt;";
+            $styleTextFormat   = "mso-number-format:'\@';";
+            $styleNumberFormat = "mso-number-format:'0';";
+
+            $bgTempat    = "background-color:#FEF9C3;";
+            $bgUrutan    = "background-color:#FFE4E6;";
+            $bgJabatan   = "background-color:#FED7AA;";
+            $bgIdentitas = "background-color:#DBEAFE;";
+            $bgPeriode   = "background-color:#DCFCE7;";
+            $bgKepeg     = "background-color:#E9D5FF;";
+            $bgPribadi   = "background-color:#FCE7F3;";
+
+            // ============= BUILD HTML =============
+            $html  = '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
+            $html .= '<head><meta charset="UTF-8">';
+            $html .= '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
+            $html .= '<x:Name>Data Karyawan</x:Name>';
+            $html .= '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>';
+            $html .= '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+            $html .= '</head><body>';
+            $html .= '<table border="1" cellpadding="4" cellspacing="0">';
+
+            // HEADER
+            $html .= '<thead><tr>';
+            $html .= '<th style="' . $styleThBase . '" width="180">Perusahaan</th>';
+            $html .= '<th style="' . $styleThBase . '" width="100">Divisi</th>';
+            $html .= '<th style="' . $styleThBase . '" width="160">Departemen</th>';
+            $html .= '<th style="' . $styleThBase . '" width="60">No Urut</th>';
+            $html .= '<th style="' . $styleThBase . '" width="180">Jabatan</th>';
+            $html .= '<th style="' . $styleThBase . '" width="170">NIK KTP</th>';
+            $html .= '<th style="' . $styleThBase . '" width="110">NIK Kerja</th>';
+            $html .= '<th style="' . $styleThBase . '" width="100">Awal Masuk</th>';
+            $html .= '<th style="' . $styleThBase . '" width="100">Lama Kerja</th>';
+            $html .= '<th style="' . $styleThBase . '" width="190">Nama Lengkap</th>';
+            $html .= '<th style="' . $styleThBase . '" width="140">Tipe Karyawan</th>';
+            $html .= '<th style="' . $styleThBase . '" width="80">JK</th>';
+            $html .= '<th style="' . $styleThBase . '" width="120">No HP</th>';
+            $html .= '<th style="' . $styleThBase . '" width="200">Pendidikan</th>';
+            $html .= '<th style="' . $styleThBase . '" width="100">Tgl Lahir</th>';
+            $html .= '<th style="' . $styleThBase . '" width="60">Umur</th>';
+            $html .= '<th style="' . $styleThBase . '" width="80">Status</th>';
+            $html .= '</tr></thead><tbody>';
+
+            $no = 1;
+            foreach ($karyawans as $i => $kry) {
+
+                $tglLahir = $kry->tanggal_lahir
+                    ? \Carbon\Carbon::parse($kry->tanggal_lahir)->format('d/m/Y')
+                    : '-';
+                $umur = $kry->tanggal_lahir
+                    ? \Carbon\Carbon::parse($kry->tanggal_lahir)->age
+                    : '-';
+                $tglMasuk = $kry->tanggal_masuk
+                    ? \Carbon\Carbon::parse($kry->tanggal_masuk)->format('d/m/Y')
+                    : '-';
+
+                $lamaKerja = '-';
+                if ($kry->tanggal_masuk) {
+                    $diff  = \Carbon\Carbon::parse($kry->tanggal_masuk)->diff(now());
+                    $parts = [];
+                    if ($diff->y > 0) $parts[] = $diff->y . ' tahun';
+                    if ($diff->m > 0) $parts[] = $diff->m . ' bulan';
+                    if (empty($parts)) $parts[] = $diff->d . ' hari';
+                    $lamaKerja = implode(' ', $parts);
+                }
+
+                $statusText  = strtoupper($kry->status ?? '-');
+                $statusWarna = $kry->status === 'aktif'
+                    ? 'color:#15803D; font-weight:bold;'
+                    : 'color:#B91C1C; font-weight:bold;';
+                $jkText = $kry->jenis_kelamin === 'L' ? 'L' : 'P';
+
+                $html .= '<tr>';
+
+                // ⭐ Kolom PT - merge lintas seluruh PT
+                if ($rowspanPT[$i] > 0) {
+                    $html .= '<td rowspan="' . $rowspanPT[$i] . '" style="' . $styleTdMerged . $bgTempat . '">'
+                           . e($kry->perusahaan->nama_perusahaan ?? '-') . '</td>';
+                }
+
+                // ⭐ Kolom Divisi - merge dalam PT yang sama
+                if ($rowspanDiv[$i] > 0) {
+                    $html .= '<td rowspan="' . $rowspanDiv[$i] . '" style="' . $styleTdMerged . $bgTempat . '">'
+                           . e($kry->departemen->divisi->nama_divisi ?? '-') . '</td>';
+                }
+
+                // ⭐ Kolom Departemen - merge dalam Divisi yang sama
+                if ($rowspanDept[$i] > 0) {
+                    $html .= '<td rowspan="' . $rowspanDept[$i] . '" style="' . $styleTdMerged . $bgTempat . '">'
+                           . e($kry->departemen->nama_departemen ?? '-') . '</td>';
+                }
+
+                // Kolom per baris
+                $html .= '<td style="' . $styleTdBase . $bgUrutan . $styleNumberFormat . ' text-align:center;">' . $no++ . '</td>';
+                $html .= '<td style="' . $styleTdBase . $bgJabatan . '">'   . e($kry->jabatan->nama_jabatan ?? '-') . '</td>';
+                $html .= '<td style="' . $styleTdBase . $bgIdentitas . $styleTextFormat . ' text-align:center;">' . e($kry->nik_ktp ?? '-') . '</td>';
+                $html .= '<td style="' . $styleTdBase . $bgIdentitas . $styleTextFormat . ' text-align:center;">' . e($kry->nik_kerja ?? '-') . '</td>';
+                $html .= '<td style="' . $styleTdBase . $bgPeriode . ' text-align:center;">' . $tglMasuk . '</td>';
+                $html .= '<td style="' . $styleTdBase . $bgPeriode . ' text-align:center;">' . $lamaKerja . '</td>';
+                $html .= '<td style="' . $styleTdBase . $bgIdentitas . '">' . e($kry->nama_lengkap ?? '-') . '</td>';
+                $html .= '<td style="' . $styleTdBase . $bgKepeg . '">'     . e($kry->tipeKaryawan->nama ?? '-') . '</td>';
+                $html .= '<td style="' . $styleTdBase . $bgKepeg . ' text-align:center;">' . $jkText . '</td>';
+                $html .= '<td style="' . $styleTdBase . $bgKepeg . $styleTextFormat . ' text-align:center;">' . e($kry->no_hp ?? '-') . '</td>';
+                $html .= '<td style="' . $styleTdBase . $bgKepeg . '">'     . e($kry->pendidikan ?? '-') . '</td>';
+                $html .= '<td style="' . $styleTdBase . $bgPribadi . ' text-align:center;">' . $tglLahir . '</td>';
+                $html .= '<td style="' . $styleTdBase . $bgPribadi . $styleNumberFormat . ' text-align:center;">' . $umur . '</td>';
+                $html .= '<td style="' . $styleTdBase . $bgPribadi . $statusWarna . ' text-align:center;">' . $statusText . '</td>';
+
+                $html .= '</tr>';
+            }
+
+            $html .= '</tbody></table></body></html>';
+
+            return response("\xEF\xBB\xBF" . $html, 200, [
+                'Content-Type'        => 'application/vnd.ms-excel; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Cache-Control'       => 'max-age=0',
+                'Pragma'              => 'public',
+            ]);
         }
 
         // PAGINATION
@@ -162,7 +316,7 @@ class KaryawanController extends Controller
         ));
     }
 
-     public function create()
+    public function create()
     {
         $perusahaans = Perusahaan::where('status', 'aktif')->orderBy('nama_perusahaan')->get();
         $tipeKaryawans = TipeKaryawan::all();
@@ -196,7 +350,6 @@ class KaryawanController extends Controller
             'tanggal_masuk' => 'required|date',
         ]);
 
-        // Jadwal shift bergilir hanya masuk akal untuk dasar absensi 'jadwal'.
         $tipe = TipeKaryawan::find($request->tipe_karyawan_id);
         $pakaiJadwalShift = $request->boolean('pakai_jadwal_shift') && $tipe?->dasar_absensi === 'jadwal';
 
@@ -204,12 +357,10 @@ class KaryawanController extends Controller
             return back()->withInput()->withErrors(['shift_id' => $pesanShift]);
         }
 
-        // Gabungkan pendidikan
         $tingkat = $request->tingkat_pendidikan;
         $namaSekolah = trim($request->nama_sekolah ?? '');
         $pendidikanGabung = $namaSekolah ? "{$tingkat}-{$namaSekolah}" : $tingkat;
 
-        // Simpan karyawan
         $karyawan = Karyawan::create([
             'nik_ktp' => $request->nik_ktp,
             'nik_kerja' => $request->nik_kerja,
@@ -233,7 +384,6 @@ class KaryawanController extends Controller
             'status' => 'aktif'
         ]);
 
-        // Buat akun user otomatis
         $username_baru = strtolower(str_replace(' ', '', $request->nama_lengkap));
         if (User::where('username', $username_baru)->exists()) {
             $username_baru .= rand(10, 99);
@@ -249,7 +399,6 @@ class KaryawanController extends Controller
 
         return redirect()->route('karyawan.index')->with('success', 'Data Karyawan berhasil ditambahkan!');
     }
-
 
     public function show($id)
     {
@@ -297,9 +446,6 @@ class KaryawanController extends Controller
     {
         $karyawan = Karyawan::findOrFail($id);
 
-        // ==========================================
-        // VALIDASI (dengan unique kecuali diri sendiri)
-        // ==========================================
         $request->validate([
             'nik_ktp' => 'required|digits:16|unique:karyawan,nik_ktp,' . $id,
             'nik_kerja' => 'required|unique:karyawan,nik_kerja,' . $id,
@@ -322,7 +468,6 @@ class KaryawanController extends Controller
             'pakai_jadwal_shift' => 'nullable|boolean',
         ]);
 
-        // Jadwal shift bergilir hanya masuk akal untuk dasar absensi 'jadwal'.
         $tipe = TipeKaryawan::find($request->tipe_karyawan_id);
         $pakaiJadwalShift = $request->boolean('pakai_jadwal_shift') && $tipe?->dasar_absensi === 'jadwal';
 
@@ -330,9 +475,6 @@ class KaryawanController extends Controller
             return back()->withInput()->withErrors(['shift_id' => $pesanShift]);
         }
 
-        // ==========================================
-        // GABUNGKAN PENDIDIKAN
-        // ==========================================
         $pendidikanGabung = $karyawan->pendidikan;
         if ($request->filled('tingkat_pendidikan')) {
             $namaSekolah = trim($request->nama_sekolah ?? '');
@@ -341,9 +483,6 @@ class KaryawanController extends Controller
                 : $request->tingkat_pendidikan;
         }
 
-        // ==========================================
-        // UPDATE KARYAWAN (LENGKAP)
-        // ==========================================
         $karyawan->update([
             'nik_ktp' => $request->nik_ktp,
             'nik_kerja' => $request->nik_kerja,
@@ -365,7 +504,6 @@ class KaryawanController extends Controller
             'pakai_jadwal_shift' => $pakaiJadwalShift,
         ]);
 
-        // Jika status berubah menjadi nonaktif, sinkronkan akun user juga
         if ($request->status === 'nonaktif') {
             User::where('karyawan_id', $id)->update(['status' => 'nonaktif']);
         } elseif ($request->status === 'aktif') {
@@ -376,11 +514,6 @@ class KaryawanController extends Controller
                          ->with('success', 'Data Karyawan berhasil diperbarui!');
     }
 
-    /**
-     * Validasi shift tetap. Return pesan error, atau null kalau lolos.
-     * - Bulanan (dasar 'jadwal') yang TIDAK bergilir wajib punya shift tetap.
-     * - Shift milik PT tertentu hanya boleh dipakai karyawan PT itu.
-     */
     private function cekShift(Request $request, ?TipeKaryawan $tipe, bool $pakaiJadwalShift): ?string
     {
         $shiftId = $request->shift_id ?: null;
@@ -399,10 +532,6 @@ class KaryawanController extends Controller
 
         return null;
     }
-
-    // ==========================================
-    // AJAX CASCADING DROPDOWN
-    // ==========================================
 
     public function getDivisi($perusahaan_id)
     {
@@ -461,9 +590,6 @@ class KaryawanController extends Controller
         return view('karyawan.qr_massal', compact('karyawans'));
     }
 
-    /**
-     * Reset password karyawan ke default (passwor123)
-     */
     public function resetPassword($id)
     {
         $karyawan = Karyawan::findOrFail($id);
