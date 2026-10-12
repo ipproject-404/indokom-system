@@ -74,6 +74,7 @@ class PresensiController extends Controller
 
     /**
      * Export Laporan Rinci 1 Karyawan ke Excel (.xls HTML)
+     * Nama file menggunakan NAMA LENGKAP karyawan.
      */
     public function exportExcel(Request $request)
     {
@@ -118,7 +119,14 @@ class PresensiController extends Controller
 
         $html = $this->buildLaporanRinciHtml($karyawan, $presensi, $lembur, $startDate, $endDate);
 
-        $fileName = 'Laporan_Rinci_' . $karyawan->nik_kerja . '_' . $startDate . '_sd_' . $endDate . '.xls';
+        // ==========================================
+        // ⭐ FILENAME PAKAI NAMA LENGKAP (bukan NIK)
+        // ==========================================
+        $namaFile = preg_replace('/[\\\\\/\?\*\[\]:\|<>"]/', '', $karyawan->nama_lengkap);
+        $namaFile = trim($namaFile);
+        $namaFile = str_replace(' ', '_', $namaFile);
+
+        $fileName = 'Laporan_Rinci_' . $namaFile . '_' . $startDate . '_sd_' . $endDate . '.xls';
 
         return response("\xEF\xBB\xBF" . $html, 200, [
             'Content-Type'        => 'application/vnd.ms-excel; charset=UTF-8',
@@ -129,7 +137,9 @@ class PresensiController extends Controller
 
     /**
      * Build HTML untuk Laporan Rinci 1 karyawan
-     * + Info Lokasi (Dalam/Luar Radius + Alamat)
+     * - Toleransi terlambat: 10 menit
+     * - Toleransi pulang awal: 10 menit
+     * - Info Lokasi (Dalam/Luar Radius + Alamat)
      */
     private function buildLaporanRinciHtml($karyawan, $presensi, $lembur, $startDate, $endDate)
     {
@@ -224,32 +234,60 @@ class PresensiController extends Controller
             $absenMasuk  = ($prs && $prs->jam_masuk)  ? Carbon::parse($prs->jam_masuk)->format('H:i')  : '-';
             $absenPulang = ($prs && $prs->jam_pulang) ? Carbon::parse($prs->jam_pulang)->format('H:i') : '-';
 
-            // Hitung Terlambat
+            // ==========================================
+            // HITUNG TERLAMBAT (dengan toleransi 10 menit)
+            // ==========================================
+            $masukAkt = null;
             $terlambat = '-';
             if ($prs && $shift && $prs->jam_masuk && $statusKerja === 'Kerja') {
                 $masukStd = Carbon::parse($tglKey . ' ' . $shift->jam_masuk);
                 $jamMasukStr = Carbon::parse($prs->jam_masuk)->format('H:i:s');
                 $masukAkt    = Carbon::parse($tglKey . ' ' . $jamMasukStr);
-                $batasStd = $masukStd->copy()->addMinutes($shift->toleransi_menit ?? 0);
 
-                if ($masukAkt->gt($batasStd)) {
-                    $terlambat = (int) $masukStd->diffInMinutes($masukAkt);
+                $toleransi = $shift->toleransi_menit ?? 10;
+                if ($toleransi <= 0) $toleransi = 10;
+
+                if ($masukAkt->gt($masukStd)) {
+                    $selisihTelat = (int) abs($masukStd->diffInMinutes($masukAkt));
+                    $terlambatEfektif = $selisihTelat - $toleransi;
+
+                    if ($terlambatEfektif > 0) {
+                        $terlambat = $terlambatEfektif . ' mnt';
+                    } else {
+                        $terlambat = '-';
+                    }
                 }
             }
 
-            // Hitung Pulang Awal
+            // ==========================================
+            // HITUNG PULANG AWAL (fix angka negatif + toleransi 10 menit)
+            // ==========================================
             $pulangAwal = '-';
             if ($prs && $shift && $prs->jam_pulang && $statusKerja === 'Kerja') {
                 $pulangStd = Carbon::parse($tglKey . ' ' . $shift->jam_pulang_default);
                 $jamPulangStr = Carbon::parse($prs->jam_pulang)->format('H:i:s');
                 $pulangAkt    = Carbon::parse($tglKey . ' ' . $jamPulangStr);
 
+                if ($masukAkt && $pulangAkt->lt($masukAkt)) {
+                    $pulangAkt->addDay();
+                }
+
                 if ($pulangAkt->lt($pulangStd)) {
-                    $pulangAwal = (int) $pulangStd->diffInMinutes($pulangAkt);
+                    $selisihPulang = (int) abs($pulangStd->diffInMinutes($pulangAkt));
+                    $toleransiPulang = 10;
+                    $pulangAwalEfektif = $selisihPulang - $toleransiPulang;
+
+                    if ($pulangAwalEfektif > 0) {
+                        $pulangAwal = $pulangAwalEfektif . ' mnt';
+                    } else {
+                        $pulangAwal = '-';
+                    }
                 }
             }
 
-            // Hitung Jam Efektif
+            // ==========================================
+            // HITUNG JAM EFEKTIF
+            // ==========================================
             $jamEfektif = '-';
             if ($prs && $prs->jam_masuk && $prs->jam_pulang) {
                 $jamMasukStr  = Carbon::parse($prs->jam_masuk)->format('H:i:s');
@@ -262,7 +300,7 @@ class PresensiController extends Controller
                     $p->addDay();
                 }
 
-                $menit = (int) $m->diffInMinutes($p);
+                $menit = (int) abs($m->diffInMinutes($p));
                 $jamEfektif = floor($menit / 60) . '.' . str_pad($menit % 60, 2, '0', STR_PAD_LEFT);
             }
 
@@ -276,7 +314,6 @@ class PresensiController extends Controller
             if ($prs) {
                 $parts = [];
 
-                // IN (Masuk)
                 if ($prs->jam_masuk) {
                     $statusRadius = 'Tidak Terdeteksi';
                     $warnaIn = 'color:#64748B;';
@@ -298,7 +335,6 @@ class PresensiController extends Controller
                              . '<br><span style="color:#64748B; font-size:8.5pt;">' . e($alamat) . '</span>';
                 }
 
-                // OUT (Pulang)
                 if ($prs->jam_pulang) {
                     $statusRadius = 'Tidak Terdeteksi';
                     $warnaOut = 'color:#64748B;';

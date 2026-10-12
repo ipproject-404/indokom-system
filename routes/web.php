@@ -13,9 +13,7 @@ use App\Http\Controllers\ShiftHrdController;
 use App\Http\Controllers\LemburKaryawanController;
 use App\Http\Controllers\LemburPayrollController;
 
-
 use Illuminate\Support\Facades\Route;
-
 
 Route::get('/', function () {
     return view('welcome');
@@ -72,11 +70,7 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::get('/hrd/absensi/log-kehadiran', [App\Http\Controllers\PresensiController::class, 'logHarian'])->name('kehadiran.log');
     Route::get('/hrd/absensi/export-excel', [App\Http\Controllers\PresensiController::class, 'exportExcel'])->name('kehadiran.export');
 
-    // Lembur
-    Route::get('/hrd/lembur/pengajuan', [App\Http\Controllers\LemburController::class, 'index'])->name('lembur.pengajuan');
-    Route::get('/hrd/lembur/export-excel', [App\Http\Controllers\LemburController::class, 'exportExcel'])->name('lembur.export');
-    Route::post('/hrd/lembur/{id}/approve', [App\Http\Controllers\LemburController::class, 'approve'])->name('lembur.approve');
-    Route::post('/hrd/lembur/{id}/reject', [App\Http\Controllers\LemburController::class, 'reject'])->name('lembur.reject');
+    // ⭐ LEMBUR HRD SUDAH DIHAPUS (dipindah ke role lain)
 
     // Jabatan & Departemen
     Route::get('/hrd/jabatan-departemen', [JabatanDepartemenController::class, 'index'])->name('jabatan.departemen.index');
@@ -91,7 +85,7 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::get('/hrd/profil', [ProfilController::class, 'index'])->name('profile.index');
     Route::post('/hrd/profil/update-password', [ProfilController::class, 'updatePassword'])->name('profile.update-password');
 
-        // Shift karyawan (hanya lihat; shift diatur kepala bagian)
+    // Shift karyawan (hanya lihat; shift diatur kepala bagian)
     Route::get('/hrd/shift', [ShiftHrdController::class, 'index'])->name('shift.hrd.index');
 });
 
@@ -113,4 +107,3 @@ Route::middleware(['auth', 'role:karyawan,hrd', 'hak:payroll'])->group(function 
     Route::post('/lembur-payroll/{id}/setujui', [LemburPayrollController::class, 'setujui'])->name('lembur.payroll.setujui');
     Route::post('/lembur-payroll/{id}/tolak', [LemburPayrollController::class, 'tolak'])->name('lembur.payroll.tolak');
 });
-

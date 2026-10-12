@@ -16,7 +16,6 @@
             ['label' => 'Manajemen QR Code', 'icon' => 'bi-qr-code-scan', 'route' => 'karyawan.qr.index', 'aktif' => ['karyawan.qr.index']],
             ['label' => 'Log Kehadiran Harian', 'icon' => 'bi-calendar-check', 'route' => 'kehadiran.log', 'aktif' => ['kehadiran.log']],
             ['label' => 'Shift Karyawan', 'icon' => 'bi-calendar-range', 'route' => 'shift.hrd.index', 'aktif' => ['shift.hrd.index']],
-            ['label' => 'Pengajuan Lembur', 'icon' => 'bi-file-earmark-plus', 'route' => 'lembur.pengajuan', 'aktif' => ['lembur.pengajuan'], 'badge' => $lemburMenunggu ?? 0],
         ],
         'Akun' => [
             ['label' => 'Profil Saya', 'icon' => 'bi-person-circle', 'route' => 'profile.index', 'aktif' => ['profile.index']],

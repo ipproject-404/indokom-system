@@ -7,7 +7,6 @@ use Carbon\Carbon;
 // Memanggil Model Database berdasarkan ERD
 use App\Models\Karyawan;
 use App\Models\Presensi;
-use App\Models\Lembur;
 
 class DashboardHrdController extends Controller
 {
@@ -21,29 +20,18 @@ class DashboardHrdController extends Controller
         // ==========================================
         $totalKaryawanAktif = Karyawan::where('status', 'aktif')->count();
         $hadirHariIni = Presensi::whereDate('tanggal', $hariIni)->count();
-        $lemburMenunggu = Lembur::where('status', 'menunggu')->count();
         $qrTercetak = Karyawan::where('status', 'aktif')->whereNotNull('barcode_uid')->count();
 
         // ==========================================
         // 2. DATA TABEL 1: Daftar Karyawan (5 Terbaru)
         // ==========================================
-        // Menggunakan "with" untuk memanggil relasi tabel jabatan dan departemen
         $karyawans = Karyawan::with(['jabatan', 'departemen'])
                              ->orderBy('created_at', 'desc')
                              ->take(5)
                              ->get();
 
         // ==========================================
-        // 3. DATA TABEL 2: Pengajuan Lembur
-        // ==========================================
-        $lemburs = Lembur::with('karyawan.departemen')
-                         ->where('status', 'menunggu')
-                         ->orderBy('created_at', 'desc')
-                         ->take(5)
-                         ->get();
-
-        // ==========================================
-        // 4. DATA TABEL 3: Pantauan Kehadiran Hari Ini
+        // 3. DATA TABEL 2: Pantauan Kehadiran Hari Ini
         // ==========================================
         $presensis = Presensi::with('karyawan.departemen')
                              ->whereDate('tanggal', $hariIni)
@@ -51,17 +39,12 @@ class DashboardHrdController extends Controller
                              ->take(5)
                              ->get();
 
-        // Absen HRD sendiri tidak lagi di sini: HRD absen lewat dashboard
-        // karyawan (DashboardController), sama seperti karyawan lain.
-
         // Mengirim semua data di atas ke file blade HTML
         return view('dashboard.hrd', compact(
             'totalKaryawanAktif',
             'hadirHariIni',
-            'lemburMenunggu',
             'qrTercetak',
             'karyawans',
-            'lemburs',
             'presensis'
         ));
     }
