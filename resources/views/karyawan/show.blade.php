@@ -167,6 +167,41 @@
                         @endif
                     </div>
 
+                    <!-- HAK AKSES KHUSUS -->
+
+    @php
+        $punyaPayroll = $karyawan->punyaHak('payroll');
+        $departemenBolehHak = ['Personalia'];
+        $tampilHakAkses = in_array($karyawan->departemen->nama_departemen ?? '', $departemenBolehHak);
+
+    @endphp
+@if ($tampilHakAkses)
+<!-- HAK AKSES KHUSUS -->
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+    <div class="flex items-center gap-2 border-b border-slate-100 pb-3 mb-4">
+        <div class="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center">
+            <i class="bi bi-shield-check-fill"></i>
+        </div>
+        <h3 class="font-bold text-slate-800 text-sm">Hak Akses Khusus</h3>
+    </div>
+
+    <div class="flex items-center justify-between py-2">
+        <div>
+            <div class="text-sm font-semibold text-slate-800">Payroll Lembur</div>
+            <div class="text-xs text-slate-400 mt-0.5">Bisa acc/tolak pengajuan lembur karyawan lain</div>
+        </div>
+        <form method="POST" action="{{ route('karyawan.hak-akses.toggle', $karyawan->id) }}">
+            @csrf
+            <input type="hidden" name="hak" value="payroll">
+            <button type="submit"
+                class="px-4 py-1.5 rounded-lg text-xs font-bold transition-colors {{ $punyaPayroll ? 'bg-violet-600 text-white hover:bg-violet-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                {{ $punyaPayroll ? 'Aktif — Cabut' : 'Nonaktif — Beri' }}
+            </button>
+        </form>
+    </div>
+</div>
+@endif
+
                     <!-- STATISTIK KEHADIRAN -->
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                         <div class="flex items-center gap-2 border-b border-slate-100 pb-3 mb-4">

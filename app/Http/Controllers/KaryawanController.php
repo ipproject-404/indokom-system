@@ -408,6 +408,7 @@ class KaryawanController extends Controller
             'perusahaan',
             'tipeKaryawan',
             'shift',
+            'hakAkses',
         ])->findOrFail($id);
 
         $akun = User::where('karyawan_id', $id)->first();

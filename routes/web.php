@@ -71,6 +71,7 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::get('/hrd/absensi/export-excel', [App\Http\Controllers\PresensiController::class, 'exportExcel'])->name('kehadiran.export');
 
     // ⭐ LEMBUR HRD SUDAH DIHAPUS (dipindah ke role lain)
+    Route::post('/hrd/karyawan/{id}/hak-akses', [App\Http\Controllers\HakAksesController::class, 'toggle'])->name('karyawan.hak-akses.toggle');
 
     // Jabatan & Departemen
     Route::get('/hrd/jabatan-departemen', [JabatanDepartemenController::class, 'index'])->name('jabatan.departemen.index');
