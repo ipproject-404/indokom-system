@@ -8,9 +8,20 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
-        .sticky-col {
+        /* Sticky kolom: checkbox (left 0, width 40px) */
+        .sticky-col-checkbox {
             position: sticky;
             left: 0;
+            background-color: #f8fafc;
+            z-index: 12;
+            width: 40px;
+            min-width: 40px;
+            max-width: 40px;
+        }
+        /* Sticky kolom: nama karyawan (left 40px) */
+        .sticky-col-name {
+            position: sticky;
+            left: 40px;
             background-color: #f8fafc;
             z-index: 10;
             box-shadow: 3px 0 6px rgba(0,0,0,0.06);
@@ -120,8 +131,9 @@
                         <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center flex-1">
                             <i class="bi bi-filter mr-1.5 text-lg"></i> Filter
                         </button>
-                        <button type="submit" formaction="{{ route('kehadiran.export') }}" class="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm flex items-center justify-center flex-1">
-                            <i class="bi bi-file-earmark-excel mr-1.5 text-lg"></i> Export Excel
+                        <!-- ⭐ TOMBOL EXPORT TERPILIH (via JS) -->
+                        <button type="button" onclick="exportTerpilihExcel()" class="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm flex items-center justify-center flex-1">
+                            <i class="bi bi-file-earmark-excel mr-1.5 text-lg"></i> Export Excel Terpilih
                         </button>
                         <a href="{{ route('kehadiran.log') }}" class="bg-gray-100 text-gray-700 border border-gray-300 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center justify-center">
                             Reset
@@ -152,7 +164,13 @@
                     <table class="w-full text-left border-collapse table-matrix" style="min-width: max-content;">
                         <thead class="bg-slate-700 text-white text-[11px] uppercase tracking-wider">
                             <tr>
-                                <th class="px-5 py-3 font-bold sticky-col bg-slate-800 text-white border-r-2 border-slate-900 z-10 w-64 min-w-[250px] shadow-[2px_0_5px_rgba(0,0,0,0.3)]">Karyawan</th>
+                                <!-- ⭐ CHECKBOX COLUMN -->
+                                <th class="sticky-col-checkbox bg-slate-800 text-white border-r border-slate-900 px-2 py-3 text-center">
+                                    <input type="checkbox" id="selectAllKaryawan" onclick="toggleSelectAllKaryawan(this)" 
+                                           class="w-4 h-4 rounded cursor-pointer accent-blue-600">
+                                </th>
+                                <!-- NAMA KARYAWAN COLUMN -->
+                                <th class="sticky-col-name bg-slate-800 text-white border-r-2 border-slate-900 px-5 py-3 font-bold w-64 min-w-[250px] shadow-[2px_0_5px_rgba(0,0,0,0.3)]">Karyawan</th>
                                 
                                 @foreach($dates as $date)
                                 @php 
@@ -170,7 +188,14 @@
                             @forelse($karyawans as $karyawan)
                             <tr class="hover:bg-blue-50/50 transition-colors group">
                                 
-                                <td class="px-5 py-3 sticky-col group-hover:bg-slate-100 border-r-2 border-gray-300 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                <!-- ⭐ CHECKBOX CELL -->
+                                <td class="sticky-col-checkbox group-hover:bg-slate-100 text-center px-2 py-3 border-r border-gray-300">
+                                    <input type="checkbox" class="row-checkbox-karyawan w-4 h-4 rounded cursor-pointer accent-blue-600" 
+                                           value="{{ $karyawan->id }}">
+                                </td>
+
+                                <!-- NAMA KARYAWAN CELL -->
+                                <td class="sticky-col-name group-hover:bg-slate-100 border-r-2 border-gray-300 px-5 py-3 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                     <div class="font-bold text-gray-900 truncate" title="{{ $karyawan->nama_lengkap }}">{{ $karyawan->nama_lengkap }}</div>
                                     <div class="text-xs text-gray-500 mt-0.5 font-medium truncate">{{ $karyawan->nik_kerja }} &bull; {{ $karyawan->departemen->nama_departemen ?? '-' }}</div>
                                 </td>
@@ -249,7 +274,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="{{ count($dates) + 1 }}" class="px-6 py-16 text-center">
+                                <td colspan="{{ count($dates) + 2 }}" class="px-6 py-16 text-center">
                                     <h3 class="text-lg font-bold text-gray-800 mb-1">Tidak Ada Data Karyawan</h3>
                                 </td>
                             </tr>
@@ -316,6 +341,64 @@
             }
         }
     };
+
+    // ==========================================
+    // SELECT ALL CHECKBOX
+    // ==========================================
+    function toggleSelectAllKaryawan(source) {
+        document.querySelectorAll('.row-checkbox-karyawan').forEach(cb => {
+            cb.checked = source.checked;
+        });
+    }
+
+    // ==========================================
+    // EXPORT EXCEL — MULTI DOWNLOAD (1 file per karyawan)
+    // ==========================================
+    function exportTerpilihExcel() {
+        const checked = document.querySelectorAll('.row-checkbox-karyawan:checked');
+
+        if (checked.length === 0) {
+            alert('Pilih minimal 1 karyawan terlebih dahulu!');
+            return;
+        }
+
+        const startDate = document.getElementById('start_date').value;
+        const endDate   = document.getElementById('end_date').value;
+        const baseUrl   = '{{ route("kehadiran.export") }}';
+
+        if (!confirm('Anda akan mendownload ' + checked.length + ' file Excel. Lanjutkan?')) {
+            return;
+        }
+
+        // Info progress
+        const infoBox = document.createElement('div');
+        infoBox.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#1E3A8A;color:white;padding:14px 20px;border-radius:10px;font-family:Arial;font-size:14px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+        infoBox.innerHTML = '<i class="bi bi-download"></i> Mendownload 0/' + checked.length + ' file...';
+        document.body.appendChild(infoBox);
+
+        // Download satu-satu dengan delay 1 detik
+        checked.forEach((cb, index) => {
+            const url = baseUrl + '?karyawan_id=' + cb.value + '&start_date=' + startDate + '&end_date=' + endDate;
+            
+            setTimeout(() => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                infoBox.innerHTML = '<i class="bi bi-download"></i> Mendownload ' + (index + 1) + '/' + checked.length + ' file...';
+            }, index * 1000);
+        });
+
+        // Selesai
+        setTimeout(() => {
+            infoBox.style.background = '#15803D';
+            infoBox.innerHTML = '<i class="bi bi-check-circle-fill"></i> Selesai! ' + checked.length + ' file terdownload.';
+            setTimeout(() => infoBox.remove(), 3000);
+        }, checked.length * 1000 + 500);
+    }
 </script>
 </body>
 </html>
