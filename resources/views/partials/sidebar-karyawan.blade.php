@@ -52,10 +52,13 @@
 
     // Menu payroll hanya untuk yang punya hak payroll.
     if ($karyawanSb && $karyawanSb->punyaHak('payroll')) {
-        $bagianSb['Payroll'] = [
-            ['label' => 'Persetujuan Lembur', 'icon' => 'bi-file-earmark-check', 'route' => 'lembur.payroll', 'aktif' => ['lembur.payroll']],
-        ];
-    }
+    $bagianSb['Payroll'] = [
+        ['label' => 'Dashboard Payroll', 'icon' => 'bi-cash-coin',        'route' => 'payroll.index',  'aktif' => ['payroll.index']],
+        ['label' => 'Rekap Mingguan',    'icon' => 'bi-table',             'route' => 'payroll.rekap',  'aktif' => ['payroll.rekap']],
+        ['label' => 'Kelola Tarif',      'icon' => 'bi-gear-fill',         'route' => 'payroll.tarif',  'aktif' => ['payroll.tarif']],
+        ['label' => 'Acc Lembur',        'icon' => 'bi-file-earmark-check','route' => 'lembur.payroll', 'aktif' => ['lembur.payroll']],
+    ];
+}
     
 @endphp
 

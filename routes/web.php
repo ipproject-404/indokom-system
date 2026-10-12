@@ -107,4 +107,13 @@ Route::middleware(['auth', 'role:karyawan,hrd', 'hak:payroll'])->group(function 
     Route::get('/lembur-payroll', [LemburPayrollController::class, 'index'])->name('lembur.payroll');
     Route::post('/lembur-payroll/{id}/setujui', [LemburPayrollController::class, 'setujui'])->name('lembur.payroll.setujui');
     Route::post('/lembur-payroll/{id}/tolak', [LemburPayrollController::class, 'tolak'])->name('lembur.payroll.tolak');
+
+    Route::get('/payroll', [App\Http\Controllers\PayrollController::class, 'index'])->name('payroll.index');
+    Route::post('/payroll/{id}/setujui', [App\Http\Controllers\PayrollController::class, 'setujui'])->name('payroll.setujui');
+    Route::post('/payroll/{id}/tolak', [App\Http\Controllers\PayrollController::class, 'tolak'])->name('payroll.tolak');
+    Route::get('/payroll/rekap', [App\Http\Controllers\PayrollController::class, 'rekap'])->name('payroll.rekap');
+    Route::get('/payroll/slip/{karyawanId}', [App\Http\Controllers\PayrollController::class, 'slip'])->name('payroll.slip');
+    Route::get('/payroll/tarif', [App\Http\Controllers\PayrollController::class, 'tarifIndex'])->name('payroll.tarif');
+    Route::post('/payroll/tarif', [App\Http\Controllers\PayrollController::class, 'tarifStore'])->name('payroll.tarif.store');
+    Route::delete('/payroll/tarif/{id}', [App\Http\Controllers\PayrollController::class, 'tarifDestroy'])->name('payroll.tarif.destroy');
 });

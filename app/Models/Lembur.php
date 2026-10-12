@@ -32,29 +32,75 @@ class Lembur extends Model
         return $this->belongsTo(User::class, 'disetujui_oleh');
     }
 
-    /**
-     * Hitung durasi & upah dari jam_mulai/jam_selesai. Kalau jam selesai
-     * <= jam mulai berarti lewat tengah malam (+1 hari). Tidak melakukan
-     * apa-apa kalau salah satu jam belum ada. Tarif flat dari config.
-     */
-    public function hitungUlang(): void
-    {
-        if (! $this->jam_mulai || ! $this->jam_selesai) {
-            return;
-        }
+   /**
+ * Tentukan kelompok (reguler/insentif) berdasarkan nama jabatan.
+ * Jabatan yang mengandung kata "asisten" (case-insensitive) ke atas = insentif.
+ */
+public static function tentukanKelompok(Karyawan $karyawan): string
+{
+    $namaJabatan = strtolower($karyawan->jabatan->nama_jabatan ?? '');
+    return str_contains($namaJabatan, 'Asst') ? 'insentif' : 'reguler';
+}
 
-        $tanggal = Carbon::parse($this->tanggal)->toDateString();
-        $mulai = Carbon::parse($tanggal . ' ' . $this->jam_mulai);
-        $selesai = Carbon::parse($tanggal . ' ' . $this->jam_selesai);
+/**
+ * Bulatkan durasi dengan aturan 15 menit:
+ * - Selisih antara durasi scan dan durasi ajuan ≤ 15 menit → pakai durasi ajuan
+ * - Selisih > 15 menit → hitung apa adanya dari scan, bulatkan ke 2 desimal
+ */
+public static function bulatkanDurasi(float $durasiScanJam, float $durasiAjuanJam): float
+{
+    $selisihMenit = abs($durasiScanJam - $durasiAjuanJam) * 60;
 
-        if ($selesai->lte($mulai)) {
-            $selesai->addDay();
-        }
-
-        $this->durasi_jam = round(abs($mulai->diffInMinutes($selesai)) / 60, 2);
-        $this->tarif_per_jam = $this->tarif_per_jam ?? config('lembur.tarif_per_jam');
-        $this->total_upah = round($this->durasi_jam * $this->tarif_per_jam);
+    if ($selisihMenit <= 15) {
+        return $durasiAjuanJam;
     }
+
+    return round($durasiScanJam, 2);
+}
+
+/**
+ * Hitung ulang durasi, kelompok, syarat, dan upah.
+ * Dipanggil saat acc oleh payroll.
+ */
+public function hitungUlang(): void
+{
+    if (! $this->jam_mulai || ! $this->jam_selesai) {
+        return;
+    }
+
+    $tanggal = Carbon::parse($this->tanggal)->toDateString();
+    $mulai   = Carbon::parse($tanggal . ' ' . $this->jam_mulai);
+    $selesai = Carbon::parse($tanggal . ' ' . $this->jam_selesai);
+
+    if ($selesai->lte($mulai)) {
+        $selesai->addDay();
+    }
+
+    $durasiScanJam = round(abs($mulai->diffInMinutes($selesai)) / 60, 4);
+
+    // Durasi ajuan dihitung dari jam_mulai dan jam_selesai_scan kalau ada
+    $durasiAjuanJam = $this->durasi_jam ?? $durasiScanJam;
+
+    $durasi = static::bulatkanDurasi($durasiScanJam, (float) $durasiAjuanJam);
+
+    $this->durasi_jam       = $durasiScanJam;
+    $this->durasi_final_jam = $durasi;
+
+    // Kelompok & syarat
+    $karyawan = $this->karyawan;
+    if ($karyawan) {
+        $kelompok              = static::tentukanKelompok($karyawan);
+        $this->kelompok        = $kelompok;
+        $this->memenuhi_syarat = $kelompok === 'reguler' || $durasi >= 4;
+
+        $this->tarif_per_jam = 0; // tidak dipakai lagi, upah dihitung bertingkat
+        $this->total_upah    = $this->memenuhi_syarat
+            ? TarifLembur::hitungUpah($karyawan->departemen_id, $kelompok, $durasi)
+            : 0;
+    }
+
+    $this->durasi_jam = round($durasiScanJam, 2);
+}
 
     /**
      * Dipanggil saat scan PULANG. Kalau karyawan punya pengajuan lembur
