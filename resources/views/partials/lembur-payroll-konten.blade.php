@@ -52,6 +52,12 @@
             {{ \Carbon\Carbon::parse($l->tanggal)->translatedFormat('l, d M Y') }}
         </div>
         <div class="text-muted" style="font-size:.78rem;">{{ $l->catatan }}</div>
+        {{-- setelah baris catatan --}}
+@if($l->estimasi_jam)
+    <div style="font-size:.76rem; color:#94a3b8;">
+        <i class="bi bi-clock me-1"></i>Estimasi karyawan: <strong>{{ $l->estimasi_jam }} jam</strong>
+    </div>
+@endif
 
         <div class="mt-2 p-2 rounded-3" style="background:#f8fafc; font-size:.78rem;">
             <div class="text-muted" style="font-size:.7rem; font-weight:600;">DATA SISTEM</div>

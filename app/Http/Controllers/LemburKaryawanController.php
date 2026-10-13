@@ -34,11 +34,15 @@ class LemburKaryawanController extends Controller
         $karyawan = $this->karyawanBolehLembur();
 
         $request->validate([
-            'tanggal' => 'required|date|after_or_equal:today',
-            'catatan' => 'required|string|max:255',
-        ], [
-            'catatan.required' => 'Isi alasan / pekerjaan yang dilembur.',
-        ]);
+    'tanggal'      => 'required|date|after_or_equal:today',
+    'catatan'      => 'required|string|max:255',
+    'estimasi_jam' => 'required|numeric|min:0.5|max:12',
+], [
+    'catatan.required'      => 'Isi alasan / pekerjaan yang dilembur.',
+    'estimasi_jam.required' => 'Isi estimasi berapa jam lembur.',
+    'estimasi_jam.min'      => 'Minimal estimasi 0.5 jam.',
+    'estimasi_jam.max'      => 'Maksimal estimasi 12 jam.',
+]);
 
         $tanggal = Carbon::parse($request->tanggal)->startOfDay();
 
@@ -59,6 +63,7 @@ class LemburKaryawanController extends Controller
             'jam_mulai' => $shift?->waktuPulang($tanggal)->format('H:i:s'),
             'status' => 'menunggu',
             'catatan' => $request->catatan,
+            'estimasi_jam' => $request->estimasi_jam,
         ]);
 
         return back()->with('success', 'Pengajuan lembur terkirim. Jangan lupa serahkan surat lembur ke payroll besok.');

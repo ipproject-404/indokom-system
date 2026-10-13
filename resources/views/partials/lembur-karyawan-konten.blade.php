@@ -28,10 +28,25 @@
     <div class="fw-bold mb-2" style="color:#1e293b;">Ajukan Lembur</div>
 
     <label class="form-label small fw-bold">Tanggal</label>
-    <input type="date" name="tanggal" class="form-control mb-2" value="{{ old('tanggal', now()->toDateString()) }}" min="{{ now()->toDateString() }}" required>
+    <input type="date" name="tanggal" class="form-control mb-2"
+        value="{{ old('tanggal', now()->toDateString()) }}"
+        min="{{ now()->toDateString() }}" required>
 
     <label class="form-label small fw-bold">Alasan / pekerjaan</label>
-    <textarea name="catatan" rows="2" maxlength="255" class="form-control mb-2" placeholder="Misal: mesin 2 rusak, perbaikan" required>{{ old('catatan') }}</textarea>
+    <textarea name="catatan" rows="2" maxlength="255" class="form-control mb-2"
+        placeholder="Misal: mesin 2 rusak, perbaikan" required>{{ old('catatan') }}</textarea>
+
+    <label class="form-label small fw-bold">Estimasi Lembur</label>
+    <div class="input-group mb-2">
+        <input type="number" name="estimasi_jam" class="form-control"
+            value="{{ old('estimasi_jam') }}"
+            min="0.5" max="12" step="0.5"
+            placeholder="Contoh: 2, 2.5, 3" required>
+        <span class="input-group-text">jam</span>
+    </div>
+    <div class="form-text mb-3" style="font-size:.74rem;">
+        Estimasi ini hanya informasi untuk payroll, tidak mempengaruhi perhitungan upah.
+    </div>
 
     <p class="text-muted mb-3" style="font-size:.74rem;">
         Jam mulai dihitung setelah jam pulang shift. Jam selesai otomatis dari absen pulangmu.
@@ -45,18 +60,28 @@
 @forelse ($riwayat as $l)
     @php $st = $statusLembur[$l->status] ?? $statusLembur['menunggu']; @endphp
     <div class="kartu-lembur mb-2">
-        <div class="d-flex justify-content-between align-items-start gap-2">
-            <div>
-                <div class="fw-bold" style="font-size:.88rem;">{{ \Carbon\Carbon::parse($l->tanggal)->translatedFormat('l, d M Y') }}</div>
-                <div class="text-muted" style="font-size:.78rem;">
-                    {{ $l->jam_mulai ? substr($l->jam_mulai, 0, 5) : '--:--' }}
-                    &ndash;
-                    {{ $l->jam_selesai ? substr($l->jam_selesai, 0, 5) : 'belum selesai' }}
-                    @if ($l->durasi_jam) &middot; {{ $l->durasi_jam }} jam @endif
-                </div>
-            </div>
-            <span class="badge-lembur" style="background: {{ $st['warna'] }}1a; color: {{ $st['warna'] }};">{{ $st['label'] }}</span>
+        {{-- di dalam @forelse ($riwayat as $l) --}}
+<div class="d-flex justify-content-between align-items-start gap-2">
+    <div>
+        <div class="fw-bold" style="font-size:.88rem;">
+            {{ \Carbon\Carbon::parse($l->tanggal)->translatedFormat('l, d M Y') }}
         </div>
+        <div class="text-muted" style="font-size:.78rem;">
+            {{ $l->jam_mulai ? substr($l->jam_mulai, 0, 5) : '--:--' }}
+            &ndash;
+            {{ $l->jam_selesai ? substr($l->jam_selesai, 0, 5) : 'belum selesai' }}
+            @if($l->durasi_final_jam) &middot; {{ $l->durasi_final_jam }} jam @endif
+        </div>
+        @if($l->estimasi_jam)
+            <div style="font-size:.74rem; color:#94a3b8;">
+                <i class="bi bi-clock me-1"></i>Estimasi: {{ $l->estimasi_jam }} jam
+            </div>
+        @endif
+    </div>
+    <span class="badge-lembur" style="background: {{ $st['warna'] }}1a; color: {{ $st['warna'] }};">
+        {{ $st['label'] }}
+    </span>
+</div>
 
         @if ($l->status === 'disetujui' && $l->total_upah)
             <div class="mt-1" style="font-size:.78rem; color:#16a34a; font-weight:600;">Rp {{ number_format($l->total_upah, 0, ',', '.') }}</div>

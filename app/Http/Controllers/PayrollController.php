@@ -36,9 +36,13 @@ class PayrollController extends Controller
 
         // Rekap per status
         $rekap = Lembur::whereBetween('tanggal', [$awal, $akhir])
-            ->selectRaw('status, COUNT(*) as jumlah, SUM(total_upah) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
+    ->selectRaw('status, COUNT(*) as jumlah, SUM(total_upah) as total')
+    ->groupBy('status')
+    ->get()
+    ->mapWithKeys(fn($r) => [$r->status => $r->jumlah])
+    ->put('total', Lembur::whereBetween('tanggal', [$awal, $akhir])
+        ->where('status', 'disetujui')
+        ->sum('total_upah'));
 
         return view('payroll.index', [
             'lemburs'         => $lemburs,
