@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard HRD - Indokom System</title>
     <link rel="icon" href="{{ asset('favicon.png') }}" type="image/x-icon">
-
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v=1">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -80,7 +79,7 @@
         $belumPulang = 0;
         if (isset($presensis)) {
             foreach ($presensis as $p) {
-                if (empty($p->jam_pulang)) $belumPulang++;
+                if (empty($p->jam_pulang) && $p->metode_presensi !== 'MANUAL_HRD') $belumPulang++;
             }
         }
 
@@ -113,12 +112,9 @@
 
         <div class="px-4 sm:px-8 py-6 sm:py-8 grow max-w-6xl w-full mx-auto">
 
-            <!-- ==========================================
-                 SAPAAN HERO (biru)
-            ========================================== -->
+            <!-- SAPAAN HERO (biru) -->
             <section class="mb-6 fade-up fade-up-1">
                 <div class="bg-gradient-to-br from-brand-dark via-brand to-blue-500 rounded-2xl p-6 sm:p-8 text-white relative overflow-hidden shadow-lg shadow-brand/20">
-                    <!-- Ornamen dekoratif -->
                     <div class="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-white/10 pointer-events-none"></div>
                     <div class="absolute -right-4 -bottom-16 w-40 h-40 rounded-full bg-white/5 pointer-events-none"></div>
                     <div class="absolute top-10 right-32 w-24 h-24 rounded-full bg-white/5 pointer-events-none"></div>
@@ -139,7 +135,6 @@
                             </p>
                         </div>
 
-                        <!-- Skor kehadiran melingkar -->
                         <div class="shrink-0 flex items-center gap-4">
                             <div class="text-right">
                                 <p class="text-xs uppercase tracking-wider text-blue-100 font-semibold mb-1">Kehadiran</p>
@@ -159,16 +154,13 @@
                 </div>
             </section>
 
-            <!-- ==========================================
-                 RINGKASAN KEHADIRAN (4 KARTU)
-            ========================================== -->
+            <!-- RINGKASAN KEHADIRAN (4 KARTU) -->
             <section class="mb-6 fade-up fade-up-2">
                 <h3 class="text-xs uppercase tracking-wider font-bold text-muted mb-3 flex items-center gap-2">
                     <i class="bi bi-bar-chart-fill text-brand"></i> Ringkasan hari ini
                 </h3>
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
-                    <!-- Karyawan Aktif -->
                     <div class="stat-card bg-white border border-line rounded-xl p-5 hover:border-brand hover:shadow-md">
                         <div class="flex items-start justify-between mb-3">
                             <div class="w-10 h-10 rounded-lg bg-paper text-ink flex items-center justify-center">
@@ -183,7 +175,6 @@
                         </p>
                     </div>
 
-                    <!-- Hadir -->
                     <div class="stat-card bg-white border border-line rounded-xl p-5 hover:border-brand hover:shadow-md">
                         <div class="flex items-start justify-between mb-3">
                             <div class="w-10 h-10 rounded-lg bg-brand-soft text-brand-dark flex items-center justify-center">
@@ -198,7 +189,6 @@
                         </p>
                     </div>
 
-                    <!-- Belum Hadir -->
                     <div class="stat-card bg-white border border-line rounded-xl p-5 hover:border-danger hover:shadow-md">
                         <div class="flex items-start justify-between mb-3">
                             <div class="w-10 h-10 rounded-lg bg-danger-soft text-danger flex items-center justify-center">
@@ -213,7 +203,6 @@
                         </p>
                     </div>
 
-                    <!-- Belum Pulang -->
                     <div class="stat-card bg-white border border-line rounded-xl p-5 hover:border-brand hover:shadow-md">
                         <div class="flex items-start justify-between mb-3">
                             <div class="w-10 h-10 rounded-lg bg-paper text-ink flex items-center justify-center">
@@ -230,9 +219,7 @@
                 </div>
             </section>
 
-            <!-- ==========================================
-                 PROGRESS BAR
-            ========================================== -->
+            <!-- PROGRESS BAR -->
             <section class="mb-6 fade-up fade-up-3">
                 <div class="bg-white border border-line rounded-xl p-5 sm:p-6">
                     <div class="flex justify-between items-center mb-3">
@@ -254,9 +241,7 @@
                 </div>
             </section>
 
-            <!-- ==========================================
-                 TABEL KEHADIRAN
-            ========================================== -->
+            <!-- TABEL KEHADIRAN -->
             <section class="bg-white border border-line rounded-xl overflow-hidden fade-up fade-up-4">
                 <div class="px-5 sm:px-6 py-5 border-b border-line flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div class="flex items-center gap-3">
@@ -266,7 +251,7 @@
                         <div>
                             <h3 class="font-display font-bold text-lg text-ink">Kehadiran hari ini</h3>
                             <p class="text-sm text-muted">
-                                <span id="jumlah-data">{{ isset($presensis) ? count($presensis) : 0 }}</span> karyawan sudah check-in
+                                <span id="jumlah-data">{{ isset($presensis) ? count($presensis) : 0 }}</span> karyawan tercatat
                             </p>
                         </div>
                     </div>
@@ -283,36 +268,36 @@
                         <thead class="bg-paper text-muted text-xs border-b border-line">
                             <tr>
                                 <th class="px-5 sm:px-6 py-3 font-semibold">Karyawan</th>
-                                <th class="px-5 sm:px-6 py-3 font-semibold">Jam masuk &amp; pulang</th>
-                                <th class="px-5 sm:px-6 py-3 font-semibold">Lokasi absen</th>
+                                <th class="px-5 sm:px-6 py-3 font-semibold">Jam / Status</th>
+                                <th class="px-5 sm:px-6 py-3 font-semibold">Keterangan</th>
                             </tr>
                         </thead>
                         <tbody id="tabel-presensi" class="text-sm divide-y divide-line">
                             @if(isset($presensis) && count($presensis) > 0)
                                 @foreach($presensis as $prs)
                                 @php
-                                    $titik = [
-                                        [
-                                            'label' => 'Masuk', 'ikon' => 'bi-box-arrow-in-right', 'warna' => 'text-brand',
-                                            'lat' => $prs->latitude_masuk ?? null, 'lng' => $prs->longitude_masuk ?? null,
-                                            'alamat' => $prs->alamat_masuk ?? null, 'jalan' => $prs->nama_jalan_masuk ?? null,
-                                            'jarak' => $prs->jarak_masuk_meter ?? null, 'status' => $prs->status_radius_masuk ?? null,
-                                            'kosong' => 'Tidak ada lokasi',
-                                        ],
-                                        [
-                                            'label' => 'Pulang', 'ikon' => 'bi-box-arrow-left', 'warna' => 'text-danger',
-                                            'lat' => $prs->latitude_pulang ?? null, 'lng' => $prs->longitude_pulang ?? null,
-                                            'alamat' => $prs->alamat_pulang ?? null, 'jalan' => $prs->nama_jalan_pulang ?? null,
-                                            'jarak' => $prs->jarak_pulang_meter ?? null, 'status' => $prs->status_radius_pulang ?? null,
-                                            'kosong' => 'Belum absen pulang',
-                                        ],
+                                    // Cek apakah ini status manual
+                                    $isManual = ($prs->metode_presensi === 'MANUAL_HRD');
+                                    $statusManual = $prs->status_kehadiran ?? null;
+                                    
+                                    // Config per status
+                                    $statusConfig = [
+                                        'sakit'          => ['label' => 'Sakit',      'color' => 'text-blue-700',   'bg' => 'bg-blue-100',   'border' => 'border-blue-200',   'icon' => 'bi-bandaid-fill'],
+                                        'izin'           => ['label' => 'Izin',       'color' => 'text-yellow-700', 'bg' => 'bg-yellow-100', 'border' => 'border-yellow-200', 'icon' => 'bi-envelope-fill'],
+                                        'cuti'           => ['label' => 'Cuti',       'color' => 'text-purple-700', 'bg' => 'bg-purple-100', 'border' => 'border-purple-200', 'icon' => 'bi-airplane-fill'],
+                                        'alpa'           => ['label' => 'Alpa',       'color' => 'text-red-700',    'bg' => 'bg-red-100',    'border' => 'border-red-200',    'icon' => 'bi-x-octagon-fill'],
+                                        'dinas_luar'     => ['label' => 'Dinas Luar', 'color' => 'text-orange-700', 'bg' => 'bg-orange-100', 'border' => 'border-orange-200', 'icon' => 'bi-briefcase-fill'],
+                                        'libur_nasional' => ['label' => 'Libur',      'color' => 'text-gray-700',   'bg' => 'bg-gray-100',   'border' => 'border-gray-200',   'icon' => 'bi-calendar-x-fill'],
                                     ];
+                                    $cfg = $statusManual ? ($statusConfig[$statusManual] ?? null) : null;
+                                    
                                     $nama = $prs->karyawan->nama_lengkap ?? '-';
                                 @endphp
                                 <tr class="hover:bg-paper/70 align-top" data-nama="{{ strtolower($nama) }}">
+                                    <!-- KOLOM 1: KARYAWAN -->
                                     <td class="px-5 sm:px-6 py-4">
                                         <div class="flex items-center gap-3">
-                                            <div class="w-10 h-10 shrink-0 rounded-full bg-brand-soft text-brand-dark text-xs font-bold flex items-center justify-center ring-2 ring-white shadow-sm">
+                                            <div class="w-10 h-10 shrink-0 rounded-full {{ $isManual && $cfg ? $cfg['bg'] : 'bg-brand-soft' }} {{ $isManual && $cfg ? $cfg['color'] : 'text-brand-dark' }} text-xs font-bold flex items-center justify-center ring-2 ring-white shadow-sm">
                                                 {{ strtoupper(substr($prs->karyawan->nama_lengkap ?? 'X', 0, 2)) }}
                                             </div>
                                             <div class="min-w-0">
@@ -322,64 +307,110 @@
                                         </div>
                                     </td>
 
+                                    <!-- KOLOM 2: JAM / STATUS MANUAL -->
                                     <td class="px-5 sm:px-6 py-4">
-                                        <div class="flex items-center gap-2 tabular">
-                                            <span class="inline-flex items-center gap-1.5 bg-brand-soft text-brand-dark px-2.5 py-1 rounded-md text-xs font-semibold">
-                                                <i class="bi bi-box-arrow-in-right"></i>
-                                                {{ \Carbon\Carbon::parse($prs->jam_masuk)->format('H:i') }}
+                                        @if($isManual && $cfg)
+                                            {{-- Badge status manual --}}
+                                            <span class="inline-flex items-center gap-1.5 {{ $cfg['bg'] }} {{ $cfg['color'] }} px-3 py-1.5 rounded-lg text-xs font-bold border {{ $cfg['border'] }}">
+                                                <i class="bi {{ $cfg['icon'] }}"></i>
+                                                {{ $cfg['label'] }}
                                             </span>
-                                            <span class="text-muted">&ndash;</span>
-                                            @if($prs->jam_pulang)
-                                                <span class="inline-flex items-center gap-1.5 bg-danger-soft text-danger px-2.5 py-1 rounded-md text-xs font-semibold">
-                                                    <i class="bi bi-box-arrow-left"></i>
-                                                    {{ \Carbon\Carbon::parse($prs->jam_pulang)->format('H:i') }}
+                                        @elseif($prs->jam_masuk)
+                                            {{-- Jam masuk pulang biasa --}}
+                                            <div class="flex items-center gap-2 tabular">
+                                                <span class="inline-flex items-center gap-1.5 bg-brand-soft text-brand-dark px-2.5 py-1 rounded-md text-xs font-semibold">
+                                                    <i class="bi bi-box-arrow-in-right"></i>
+                                                    {{ \Carbon\Carbon::parse($prs->jam_masuk)->format('H:i') }}
                                                 </span>
-                                            @else
-                                                <span class="inline-flex items-center gap-1.5 bg-paper text-muted px-2.5 py-1 rounded-md text-xs font-medium border border-line">
-                                                    Belum pulang
-                                                </span>
-                                            @endif
-                                        </div>
+                                                <span class="text-muted">&ndash;</span>
+                                                @if($prs->jam_pulang)
+                                                    <span class="inline-flex items-center gap-1.5 bg-danger-soft text-danger px-2.5 py-1 rounded-md text-xs font-semibold">
+                                                        <i class="bi bi-box-arrow-left"></i>
+                                                        {{ \Carbon\Carbon::parse($prs->jam_pulang)->format('H:i') }}
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex items-center gap-1.5 bg-paper text-muted px-2.5 py-1 rounded-md text-xs font-medium border border-line">
+                                                        Belum pulang
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        @else
+                                            <span class="text-muted italic text-xs">-</span>
+                                        @endif
                                     </td>
 
+                                    <!-- KOLOM 3: LOKASI / KETERANGAN -->
                                     <td class="px-5 sm:px-6 py-4">
-                                        <div class="space-y-2.5">
-                                            @foreach($titik as $t)
-                                                <div class="flex items-center gap-2 text-xs">
-                                                    <span class="w-14 shrink-0 font-semibold {{ $t['warna'] }}">{{ $t['label'] }}</span>
-
-                                                    @if($t['lat'] && $t['lng'])
-                                                        @php
-                                                            $teks = trim(($t['alamat'] ?? '') . ' ' . ($t['jalan'] ?? ''));
-                                                            $teks = $teks !== '' ? $teks : $t['lat'] . ', ' . $t['lng'];
-                                                        @endphp
-                                                        <a href="https://maps.google.com/?q={{ $t['lat'] }},{{ $t['lng'] }}" target="_blank" rel="noopener"
-                                                           title="{{ $teks }}"
-                                                           class="text-brand-dark font-medium hover:underline truncate max-w-[200px]">
-                                                            {{ $teks }}
-                                                        </a>
-
-                                                        @if($t['jarak'])
-                                                            <span class="text-muted shrink-0 tabular">{{ $t['jarak'] }} m</span>
-                                                        @endif
-
-                                                        @if($t['status'] == 'dalam_radius')
-                                                            <span class="inline-flex items-center gap-1 shrink-0 text-brand-dark font-semibold">
-                                                                <span class="w-1.5 h-1.5 rounded-full bg-brand"></span> Dalam radius
-                                                            </span>
-                                                        @elseif($t['status'])
-                                                            <span class="inline-flex items-center gap-1 shrink-0 text-danger font-semibold">
-                                                                <span class="w-1.5 h-1.5 rounded-full bg-danger"></span> Luar radius
-                                                            </span>
-                                                        @else
-                                                            <span class="shrink-0 text-muted">Radius tidak diketahui</span>
-                                                        @endif
-                                                    @else
-                                                        <span class="text-muted italic">{{ $t['kosong'] }}</span>
-                                                    @endif
+                                        @if($isManual)
+                                            {{-- Keterangan manual dari HRD --}}
+                                            @if($prs->keterangan_manual)
+                                                <div class="flex items-start gap-2 text-xs text-muted">
+                                                    <i class="bi bi-chat-left-text text-brand mt-0.5 shrink-0"></i>
+                                                    <span>{{ $prs->keterangan_manual }}</span>
                                                 </div>
-                                            @endforeach
-                                        </div>
+                                            @else
+                                                <span class="text-muted italic text-xs">
+                                                    <i class="bi bi-info-circle mr-1"></i> Diinput oleh HRD
+                                                </span>
+                                            @endif
+                                        @else
+                                            {{-- Lokasi absen QR biasa --}}
+                                            @php
+                                                $titik = [
+                                                    [
+                                                        'label' => 'Masuk', 'ikon' => 'bi-box-arrow-in-right', 'warna' => 'text-brand',
+                                                        'lat' => $prs->latitude_masuk ?? null, 'lng' => $prs->longitude_masuk ?? null,
+                                                        'alamat' => $prs->alamat_masuk ?? null, 'jalan' => $prs->nama_jalan_masuk ?? null,
+                                                        'jarak' => $prs->jarak_masuk_meter ?? null, 'status' => $prs->status_radius_masuk ?? null,
+                                                        'kosong' => 'Tidak ada lokasi',
+                                                    ],
+                                                    [
+                                                        'label' => 'Pulang', 'ikon' => 'bi-box-arrow-left', 'warna' => 'text-danger',
+                                                        'lat' => $prs->latitude_pulang ?? null, 'lng' => $prs->longitude_pulang ?? null,
+                                                        'alamat' => $prs->alamat_pulang ?? null, 'jalan' => $prs->nama_jalan_pulang ?? null,
+                                                        'jarak' => $prs->jarak_pulang_meter ?? null, 'status' => $prs->status_radius_pulang ?? null,
+                                                        'kosong' => 'Belum absen pulang',
+                                                    ],
+                                                ];
+                                            @endphp
+                                            <div class="space-y-2.5">
+                                                @foreach($titik as $t)
+                                                    <div class="flex items-center gap-2 text-xs">
+                                                        <span class="w-14 shrink-0 font-semibold {{ $t['warna'] }}">{{ $t['label'] }}</span>
+
+                                                        @if($t['lat'] && $t['lng'])
+                                                            @php
+                                                                $teks = trim(($t['alamat'] ?? '') . ' ' . ($t['jalan'] ?? ''));
+                                                                $teks = $teks !== '' ? $teks : $t['lat'] . ', ' . $t['lng'];
+                                                            @endphp
+                                                            <a href="https://maps.google.com/?q={{ $t['lat'] }},{{ $t['lng'] }}" target="_blank" rel="noopener"
+                                                               title="{{ $teks }}"
+                                                               class="text-brand-dark font-medium hover:underline truncate max-w-[200px]">
+                                                                {{ $teks }}
+                                                            </a>
+
+                                                            @if($t['jarak'])
+                                                                <span class="text-muted shrink-0 tabular">{{ $t['jarak'] }} m</span>
+                                                            @endif
+
+                                                            @if($t['status'] == 'dalam_radius')
+                                                                <span class="inline-flex items-center gap-1 shrink-0 text-brand-dark font-semibold">
+                                                                    <span class="w-1.5 h-1.5 rounded-full bg-brand"></span> Dalam radius
+                                                                </span>
+                                                            @elseif($t['status'])
+                                                                <span class="inline-flex items-center gap-1 shrink-0 text-danger font-semibold">
+                                                                    <span class="w-1.5 h-1.5 rounded-full bg-danger"></span> Luar radius
+                                                                </span>
+                                                            @else
+                                                                <span class="shrink-0 text-muted">Radius tidak diketahui</span>
+                                                            @endif
+                                                        @else
+                                                            <span class="text-muted italic">{{ $t['kosong'] }}</span>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </td>
                                 </tr>
                                 @endforeach
@@ -397,8 +428,8 @@
                                             <div class="w-16 h-16 rounded-full bg-brand-soft flex items-center justify-center mb-4">
                                                 <i class="bi bi-person-check text-3xl text-brand"></i>
                                             </div>
-                                            <p class="font-display font-bold text-lg text-ink">Belum ada yang check-in hari ini</p>
-                                            <p class="text-sm mt-1 max-w-xs">Daftar kehadiran akan terisi otomatis saat karyawan melakukan scan QR.</p>
+                                            <p class="font-display font-bold text-lg text-ink">Belum ada kehadiran hari ini</p>
+                                            <p class="text-sm mt-1 max-w-xs">Data akan muncul saat karyawan check-in atau HRD input status manual.</p>
                                         </div>
                                     </td>
                                 </tr>
