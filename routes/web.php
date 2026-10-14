@@ -70,7 +70,12 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::get('/hrd/absensi/log-kehadiran', [App\Http\Controllers\PresensiController::class, 'logHarian'])->name('kehadiran.log');
     Route::get('/hrd/absensi/export-excel', [App\Http\Controllers\PresensiController::class, 'exportExcel'])->name('kehadiran.export');
 
-    // ⭐ LEMBUR HRD SUDAH DIHAPUS (dipindah ke role lain)
+    // ⭐ INPUT MANUAL HRD (Sakit / Izin / Cuti / Alpa / Dinas Luar / Libur)
+    Route::post('/hrd/absensi/status-manual', [App\Http\Controllers\PresensiController::class, 'simpanStatusManual'])->name('kehadiran.status-manual');
+    Route::post('/hrd/absensi/status-manual/multi', [App\Http\Controllers\PresensiController::class, 'simpanIzinMultiHari'])->name('kehadiran.status-manual.multi');
+    Route::post('/hrd/absensi/status-manual/hapus', [App\Http\Controllers\PresensiController::class, 'hapusStatusManual'])->name('kehadiran.status-manual.hapus');
+
+    // LEMBUR HRD SUDAH DIHAPUS (dipindah ke role lain)
     Route::post('/hrd/karyawan/{id}/hak-akses', [App\Http\Controllers\HakAksesController::class, 'toggle'])->name('karyawan.hak-akses.toggle');
 
     // Jabatan & Departemen
@@ -115,5 +120,5 @@ Route::middleware(['auth', 'role:karyawan,hrd', 'hak:payroll'])->group(function 
     Route::get('/payroll/slip/{karyawanId}', [App\Http\Controllers\PayrollController::class, 'slip'])->name('payroll.slip');
     Route::get('/payroll/tarif', [App\Http\Controllers\PayrollController::class, 'tarifIndex'])->name('payroll.tarif');
     Route::post('/payroll/tarif', [App\Http\Controllers\PayrollController::class, 'tarifStore'])->name('payroll.tarif.store');
-    Route::delete('/payroll/tarif/{id}', [App\Http\Controllers\PayrollController::class, 'tarifDestroy'])->name('payroll.tarif.destroy');
+    Route::delete('/payroll/tarif/{id}', [App\Http\Controllers\PayrollController::class, 'destroy'])->name('payroll.tarif.destroy');
 });

@@ -5,8 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Presensi;
 use App\Models\Karyawan;
+use App\Models\Perusahaan;
+use App\Models\Divisi;
+use App\Models\Departemen;
+use App\Models\Jabatan;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Facades\Auth;
 
 class PresensiController extends Controller
 {
@@ -42,11 +47,13 @@ class PresensiController extends Controller
             $dates[] = $date->format('Y-m-d');
         }
 
-        $karyawansQuery = Karyawan::with(['departemen', 'jabatan']);
+        $karyawansQuery = Karyawan::with(['departemen.divisi', 'jabatan', 'perusahaan']);
 
         if ($search) {
-            $karyawansQuery->where('nama_lengkap', 'like', "%{$search}%")
-                           ->orWhere('nik_kerja', 'like', "%{$search}%");
+            $karyawansQuery->where(function ($q) use ($search) {
+                $q->where('nama_lengkap', 'like', "%{$search}%")
+                  ->orWhere('nik_kerja', 'like', "%{$search}%");
+            });
         }
 
         $karyawans = $karyawansQuery->orderBy('nama_lengkap', 'asc')->paginate(10);
@@ -65,16 +72,181 @@ class PresensiController extends Controller
         $selisihHari = count($dates);
         $rataHarian = $selisihHari > 0 ? round($totalKehadiran / $selisihHari) : $totalKehadiran;
 
+        // ==========================================
+        // DATA MASTER UNTUK LIVE FILTER
+        // ==========================================
+        $allPerusahaans = Perusahaan::where('status', 'aktif')->orderBy('nama_perusahaan')->get();
+        $allDivisis     = Divisi::where('status', 'aktif')->orderBy('nama_divisi')->get();
+        $allDepartemens = Departemen::where('status', 'aktif')->orderBy('nama_departemen')->get();
+        $allJabatans    = Jabatan::orderBy('nama_jabatan')->get();
+
+        // ==========================================
+        // DATA UNTUK MODAL MULTI-HARI (semua karyawan)
+        // ==========================================
+        $semuaKaryawan = Karyawan::with(['departemen', 'jabatan'])
+                            ->orderBy('nama_lengkap', 'asc')
+                            ->get();
+
         return view('absensi.log_kehadiran', compact(
             'karyawans', 'presensiData', 'dates',
             'startDate', 'endDate', 'search',
-            'totalKehadiran', 'belumPulang', 'rataHarian'
+            'totalKehadiran', 'belumPulang', 'rataHarian',
+            'allPerusahaans', 'allDivisis', 'allDepartemens', 'allJabatans',
+            'semuaKaryawan'
         ));
     }
 
     /**
+     * Simpan status kehadiran manual (single hari)
+     * Dipanggil via AJAX dari halaman Matrix.
+     */
+    public function simpanStatusManual(Request $request)
+    {
+        $request->validate([
+            'karyawan_id'      => 'required|exists:karyawan,id',
+            'tanggal'          => 'required|date',
+            'status_kehadiran' => 'required|in:sakit,izin,cuti,alpa,dinas_luar,libur_nasional',
+            'keterangan'       => 'nullable|string|max:500',
+        ]);
+
+        // Cek: tidak boleh edit kalau sudah ada presensi QR
+        $existing = Presensi::where('karyawan_id', $request->karyawan_id)
+            ->where('tanggal', $request->tanggal)
+            ->first();
+
+        if ($existing && $existing->jam_masuk && in_array($existing->metode_presensi, ['QR_KARYAWAN', 'QR_ADMIN'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Karyawan ini sudah absen masuk via QR. Tidak bisa diubah ke status manual.',
+            ], 422);
+        }
+
+        // Simpan/update
+        $presensi = Presensi::updateOrCreate(
+            [
+                'karyawan_id' => $request->karyawan_id,
+                'tanggal'     => $request->tanggal,
+            ],
+            [
+                'metode_presensi'   => 'MANUAL_HRD',
+                'status_verifikasi' => 'disetujui',
+                'status_kehadiran'  => $request->status_kehadiran,
+                'keterangan_manual' => $request->keterangan,
+                'diverifikasi_oleh' => Auth::id(),
+                'waktu_verifikasi'  => now(),
+                'shift_id'          => $existing->shift_id ?? null,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status kehadiran berhasil disimpan.',
+            'data'    => [
+                'id'               => $presensi->id,
+                'status_kehadiran' => $presensi->status_kehadiran,
+                'keterangan'       => $presensi->keterangan_manual,
+            ],
+        ]);
+    }
+
+    /**
+     * Simpan izin/cuti multi-hari (bulk)
+     * Otomatis skip hari yang sudah ada presensi QR.
+     */
+    public function simpanIzinMultiHari(Request $request)
+    {
+        $request->validate([
+            'karyawan_id'      => 'required|exists:karyawan,id',
+            'tanggal_mulai'    => 'required|date',
+            'tanggal_selesai'  => 'required|date|after_or_equal:tanggal_mulai',
+            'status_kehadiran' => 'required|in:sakit,izin,cuti,alpa,dinas_luar,libur_nasional',
+            'keterangan'       => 'nullable|string|max:500',
+        ]);
+
+        $start = Carbon::parse($request->tanggal_mulai);
+        $end   = Carbon::parse($request->tanggal_selesai);
+
+        // Batasi max 30 hari
+        if ($start->diffInDays($end) > 30) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Maksimal 30 hari dalam sekali input.',
+            ], 422);
+        }
+
+        // Cek: tidak boleh menyentuh tanggal yang sudah absen QR
+        $bentrok = Presensi::where('karyawan_id', $request->karyawan_id)
+            ->whereBetween('tanggal', [$start->toDateString(), $end->toDateString()])
+            ->whereNotNull('jam_masuk')
+            ->whereIn('metode_presensi', ['QR_KARYAWAN', 'QR_ADMIN'])
+            ->exists();
+
+        if ($bentrok) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ada tanggal yang sudah absen QR di rentang ini. Hapus dulu atau ubah rentang.',
+            ], 422);
+        }
+
+        // Loop dan save per hari
+        $jumlah = 0;
+        for ($tgl = $start->copy(); $tgl->lte($end); $tgl->addDay()) {
+            Presensi::updateOrCreate(
+                [
+                    'karyawan_id' => $request->karyawan_id,
+                    'tanggal'     => $tgl->toDateString(),
+                ],
+                [
+                    'metode_presensi'   => 'MANUAL_HRD',
+                    'status_verifikasi' => 'disetujui',
+                    'status_kehadiran'  => $request->status_kehadiran,
+                    'keterangan_manual' => $request->keterangan,
+                    'diverifikasi_oleh' => Auth::id(),
+                    'waktu_verifikasi'  => now(),
+                ]
+            );
+            $jumlah++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Berhasil input {$jumlah} hari untuk karyawan ini.",
+            'jumlah'  => $jumlah,
+        ]);
+    }
+
+    /**
+     * Hapus status kehadiran manual
+     */
+    public function hapusStatusManual(Request $request)
+    {
+        $request->validate([
+            'karyawan_id' => 'required|exists:karyawan,id',
+            'tanggal'     => 'required|date',
+        ]);
+
+        $presensi = Presensi::where('karyawan_id', $request->karyawan_id)
+            ->where('tanggal', $request->tanggal)
+            ->where('metode_presensi', 'MANUAL_HRD')
+            ->first();
+
+        if (!$presensi) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak ditemukan atau bukan input manual.',
+            ], 404);
+        }
+
+        $presensi->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status kehadiran berhasil dihapus.',
+        ]);
+    }
+
+    /**
      * Export Laporan Rinci 1 Karyawan ke Excel (.xls HTML)
-     * Nama file menggunakan NAMA LENGKAP karyawan.
      */
     public function exportExcel(Request $request)
     {
@@ -119,9 +291,6 @@ class PresensiController extends Controller
 
         $html = $this->buildLaporanRinciHtml($karyawan, $presensi, $lembur, $startDate, $endDate);
 
-        // ==========================================
-        // ⭐ FILENAME PAKAI NAMA LENGKAP (bukan NIK)
-        // ==========================================
         $namaFile = preg_replace('/[\\\\\/\?\*\[\]:\|<>"]/', '', $karyawan->nama_lengkap);
         $namaFile = trim($namaFile);
         $namaFile = str_replace(' ', '_', $namaFile);
@@ -136,10 +305,7 @@ class PresensiController extends Controller
     }
 
     /**
-     * Build HTML untuk Laporan Rinci 1 karyawan
-     * - Toleransi terlambat: 10 menit
-     * - Toleransi pulang awal: 10 menit
-     * - Info Lokasi (Dalam/Luar Radius + Alamat)
+     * Build HTML untuk Laporan Rinci 1 karyawan (di-export ke Excel)
      */
     private function buildLaporanRinciHtml($karyawan, $presensi, $lembur, $startDate, $endDate)
     {
@@ -155,6 +321,10 @@ class PresensiController extends Controller
         $tdLibur = 'border:1px solid #94A3B8; padding:5px 8px; font-family:Arial; font-size:10pt; text-align:center; background:#FEE2E2; color:#B91C1C; font-weight:bold;';
         $tdTelat = 'border:1px solid #94A3B8; padding:5px 8px; font-family:Arial; font-size:10pt; text-align:center; color:#B91C1C; font-weight:bold;';
         $tdKet   = 'border:1px solid #94A3B8; padding:5px 8px; font-family:Arial; font-size:9pt; vertical-align:top; line-height:1.4;';
+        $tdSakit = 'border:1px solid #94A3B8; padding:5px 8px; font-family:Arial; font-size:10pt; text-align:center; background:#DBEAFE; color:#1E40AF; font-weight:bold;';
+        $tdIzin  = 'border:1px solid #94A3B8; padding:5px 8px; font-family:Arial; font-size:10pt; text-align:center; background:#FEF3C7; color:#92400E; font-weight:bold;';
+        $tdCuti  = 'border:1px solid #94A3B8; padding:5px 8px; font-family:Arial; font-size:10pt; text-align:center; background:#EDE9FE; color:#5B21B6; font-weight:bold;';
+        $tdAlpa  = 'border:1px solid #94A3B8; padding:5px 8px; font-family:Arial; font-size:10pt; text-align:center; background:#FEE2E2; color:#991B1B; font-weight:bold;';
 
         $html  = '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
         $html .= '<head><meta charset="UTF-8">';
@@ -169,7 +339,6 @@ class PresensiController extends Controller
 
         $html .= '<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;">';
 
-        // Info Karyawan
         $html .= '<tr>';
         $html .= '<td style="' . $thInfo . '" width="120">NAMA</td>';
         $html .= '<td style="' . $tdInfo . '" width="280">' . e($karyawan->nama_lengkap) . '</td>';
@@ -183,7 +352,6 @@ class PresensiController extends Controller
         $html .= '<td style="' . $tdInfo . '">' . e($karyawan->jabatan->nama_jabatan ?? '-') . '</td>';
         $html .= '</tr>';
 
-        // Header tabel
         $html .= '<tr>';
         $html .= '<th style="' . $thStyle . '" rowspan="2">Tanggal</th>';
         $html .= '<th style="' . $thStyle . '" rowspan="2">Kerja/<br>Libur</th>';
@@ -205,7 +373,6 @@ class PresensiController extends Controller
         $html .= '<th style="' . $thStyle . '">Pulang</th>';
         $html .= '</tr>';
 
-        // Data harian
         $period = CarbonPeriod::create($startDate, $endDate);
 
         foreach ($period as $tgl) {
@@ -234,9 +401,18 @@ class PresensiController extends Controller
             $absenMasuk  = ($prs && $prs->jam_masuk)  ? Carbon::parse($prs->jam_masuk)->format('H:i')  : '-';
             $absenPulang = ($prs && $prs->jam_pulang) ? Carbon::parse($prs->jam_pulang)->format('H:i') : '-';
 
-            // ==========================================
-            // HITUNG TERLAMBAT (dengan toleransi 10 menit)
-            // ==========================================
+            // Status manual (kalau ada)
+            $statusManual = $prs->status_kehadiran ?? null;
+            $labelManual = match($statusManual) {
+                'sakit'          => 'SAKIT',
+                'izin'           => 'IZIN',
+                'cuti'           => 'CUTI',
+                'alpa'           => 'ALPA',
+                'dinas_luar'     => 'DINAS LUAR',
+                'libur_nasional' => 'LIBUR',
+                default          => null,
+            };
+
             $masukAkt = null;
             $terlambat = '-';
             if ($prs && $shift && $prs->jam_masuk && $statusKerja === 'Kerja') {
@@ -253,15 +429,10 @@ class PresensiController extends Controller
 
                     if ($terlambatEfektif > 0) {
                         $terlambat = $terlambatEfektif . ' mnt';
-                    } else {
-                        $terlambat = '-';
                     }
                 }
             }
 
-            // ==========================================
-            // HITUNG PULANG AWAL (fix angka negatif + toleransi 10 menit)
-            // ==========================================
             $pulangAwal = '-';
             if ($prs && $shift && $prs->jam_pulang && $statusKerja === 'Kerja') {
                 $pulangStd = Carbon::parse($tglKey . ' ' . $shift->jam_pulang_default);
@@ -274,20 +445,14 @@ class PresensiController extends Controller
 
                 if ($pulangAkt->lt($pulangStd)) {
                     $selisihPulang = (int) abs($pulangStd->diffInMinutes($pulangAkt));
-                    $toleransiPulang = 10;
-                    $pulangAwalEfektif = $selisihPulang - $toleransiPulang;
+                    $pulangAwalEfektif = $selisihPulang - 10;
 
                     if ($pulangAwalEfektif > 0) {
                         $pulangAwal = $pulangAwalEfektif . ' mnt';
-                    } else {
-                        $pulangAwal = '-';
                     }
                 }
             }
 
-            // ==========================================
-            // HITUNG JAM EFEKTIF
-            // ==========================================
             $jamEfektif = '-';
             if ($prs && $prs->jam_masuk && $prs->jam_pulang) {
                 $jamMasukStr  = Carbon::parse($prs->jam_masuk)->format('H:i:s');
@@ -296,9 +461,7 @@ class PresensiController extends Controller
                 $m = Carbon::parse($tglKey . ' ' . $jamMasukStr);
                 $p = Carbon::parse($tglKey . ' ' . $jamPulangStr);
 
-                if ($p->lt($m)) {
-                    $p->addDay();
-                }
+                if ($p->lt($m)) $p->addDay();
 
                 $menit = (int) abs($m->diffInMinutes($p));
                 $jamEfektif = floor($menit / 60) . '.' . str_pad($menit % 60, 2, '0', STR_PAD_LEFT);
@@ -307,46 +470,23 @@ class PresensiController extends Controller
             $durasiLembur = $lmb ? ($lmb->durasi_jam ?? '-') : '-';
             $tglFormatted = $tgl->translatedFormat('d-M-Y');
 
-            // ==========================================
-            // INFO LOKASI (Dalam/Luar Radius + Alamat)
-            // ==========================================
+            // Info lokasi
             $infoLokasi = '-';
-            if ($prs) {
+            if ($prs && $prs->jam_masuk) {
                 $parts = [];
+                $statusRadius = $prs->status_radius_masuk == 'dalam_radius' ? 'Dalam Radius' : 'Luar Radius';
+                $warnaIn = $prs->status_radius_masuk == 'dalam_radius' ? 'color:#15803D; font-weight:bold;' : 'color:#B91C1C; font-weight:bold;';
+                $alamat = $prs->alamat_masuk ?? $prs->nama_jalan_masuk ?? 'Lokasi tidak diketahui';
+                $jarak  = $prs->jarak_masuk_meter ? '(' . $prs->jarak_masuk_meter . 'm)' : '';
 
-                if ($prs->jam_masuk) {
-                    $statusRadius = 'Tidak Terdeteksi';
-                    $warnaIn = 'color:#64748B;';
-
-                    if ($prs->status_radius_masuk == 'dalam_radius') {
-                        $statusRadius = 'Dalam Radius';
-                        $warnaIn = 'color:#15803D; font-weight:bold;';
-                    } elseif ($prs->status_radius_masuk) {
-                        $statusRadius = 'Luar Radius';
-                        $warnaIn = 'color:#B91C1C; font-weight:bold;';
-                    }
-
-                    $alamat = $prs->alamat_masuk ?? $prs->nama_jalan_masuk ?? 'Lokasi tidak diketahui';
-                    $jarak  = $prs->jarak_masuk_meter ? '(' . $prs->jarak_masuk_meter . 'm)' : '';
-
-                    $parts[] = '<span style="color:#15803D; font-weight:bold;">IN:</span> '
-                             . '<span style="' . $warnaIn . '">' . e($statusRadius) . '</span> '
-                             . $jarak
-                             . '<br><span style="color:#64748B; font-size:8.5pt;">' . e($alamat) . '</span>';
-                }
+                $parts[] = '<span style="color:#15803D; font-weight:bold;">IN:</span> '
+                         . '<span style="' . $warnaIn . '">' . e($statusRadius) . '</span> '
+                         . $jarak
+                         . '<br><span style="color:#64748B; font-size:8.5pt;">' . e($alamat) . '</span>';
 
                 if ($prs->jam_pulang) {
-                    $statusRadius = 'Tidak Terdeteksi';
-                    $warnaOut = 'color:#64748B;';
-
-                    if ($prs->status_radius_pulang == 'dalam_radius') {
-                        $statusRadius = 'Dalam Radius';
-                        $warnaOut = 'color:#15803D; font-weight:bold;';
-                    } elseif ($prs->status_radius_pulang) {
-                        $statusRadius = 'Luar Radius';
-                        $warnaOut = 'color:#B91C1C; font-weight:bold;';
-                    }
-
+                    $statusRadius = $prs->status_radius_pulang == 'dalam_radius' ? 'Dalam Radius' : 'Luar Radius';
+                    $warnaOut = $prs->status_radius_pulang == 'dalam_radius' ? 'color:#15803D; font-weight:bold;' : 'color:#B91C1C; font-weight:bold;';
                     $alamat = $prs->alamat_pulang ?? $prs->nama_jalan_pulang ?? 'Lokasi tidak diketahui';
                     $jarak  = $prs->jarak_pulang_meter ? '(' . $prs->jarak_pulang_meter . 'm)' : '';
 
@@ -356,18 +496,38 @@ class PresensiController extends Controller
                              . '<br><span style="color:#64748B; font-size:8.5pt;">' . e($alamat) . '</span>';
                 }
 
-                if (!empty($parts)) {
-                    $infoLokasi = implode('<br><br>', $parts);
-                }
+                $infoLokasi = implode('<br><br>', $parts);
             }
 
-            $html .= '<tr>';
-            if ($statusKerja === 'Libur') {
+            // Render baris
+            if ($statusManual) {
+                // Ada status manual — tampilkan status
+                $styleManual = match($statusManual) {
+                    'sakit'          => $tdSakit,
+                    'izin'           => $tdIzin,
+                    'cuti'           => $tdCuti,
+                    'alpa'           => $tdAlpa,
+                    'dinas_luar'     => $tdCuti,
+                    'libur_nasional' => $tdLibur,
+                    default          => $tdC,
+                };
+
+                $html .= '<tr>';
+                $html .= '<td style="' . $tdC . '">' . $tglFormatted . '</td>';
+                $html .= '<td style="' . $styleManual . '" colspan="10">' . $labelManual . '</td>';
+                $html .= '<td style="' . $td . '">' . e($prs->keterangan_manual ?? '-') . '</td>';
+                $html .= '<td style="' . $td . '">' . e($prs->keterangan_manual ?? '-') . '</td>';
+                $html .= '<td style="' . $tdKet . '">-</td>';
+                $html .= '</tr>';
+            } elseif ($statusKerja === 'Libur') {
+                $html .= '<tr>';
                 $html .= '<td style="' . $tdLibur . '">' . $tglFormatted . '</td>';
                 $html .= '<td style="' . $tdLibur . '" colspan="10">LIBUR</td>';
                 $html .= '<td style="' . $tdLibur . '">' . e($keteranganLibur) . '</td>';
                 $html .= '<td style="' . $tdLibur . '">-</td>';
+                $html .= '</tr>';
             } else {
+                $html .= '<tr>';
                 $html .= '<td style="' . $tdC . '">' . $tglFormatted . '</td>';
                 $html .= '<td style="' . $tdC . '">Kerja</td>';
                 $html .= '<td style="' . $tdC . '">' . $jadwalMasuk  . '</td>';
@@ -382,8 +542,8 @@ class PresensiController extends Controller
                 $html .= '<td style="' . $td . '">-</td>';
                 $html .= '<td style="' . $td . '">-</td>';
                 $html .= '<td style="' . $tdKet . '">' . $infoLokasi . '</td>';
+                $html .= '</tr>';
             }
-            $html .= '</tr>';
         }
 
         $html .= '</table></body></html>';
