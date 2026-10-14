@@ -227,7 +227,7 @@ class PayrollController extends Controller
         return back()->with('success', 'Tarif berhasil disimpan.');
     }
 
-    public function tarifDestroy($id)
+    public function destroy($id)
     {
         TarifLembur::findOrFail($id)->delete();
         return back()->with('success', 'Tarif dihapus.');
