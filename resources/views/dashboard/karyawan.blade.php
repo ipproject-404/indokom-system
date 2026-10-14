@@ -271,7 +271,7 @@ if ($karyawan) {
                     {{ $label }} &middot;
                     {{ $np->tanggal_mulai->translatedFormat('d M Y') }}
                     @if($np->tanggal_selesai && !$np->tanggal_mulai->isSameDay($np->tanggal_selesai))
-                        – {{ $np->tanggal_selesai->translatedFormat('d M Y') }}
+                        - {{ $np->tanggal_selesai->translatedFormat('d M Y') }}
                     @endif
                 </div>
             </div>
