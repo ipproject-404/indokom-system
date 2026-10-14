@@ -236,7 +236,7 @@
             </a>
         @endif
 
-        <h6 class="fw-bold mb-3 ms-1">Menu Aplikasi</h6>
+        <h6 class="fw-bold mb-3 ms-1">Menu Aplikasi sistem</h6>
         <div class="modern-card p-3 mb-4">
             <div class="row row-cols-4 g-3">
                 @foreach ($menuAplikasi as $item)
