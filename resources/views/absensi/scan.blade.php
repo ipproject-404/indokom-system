@@ -207,11 +207,11 @@
         // bisa saja dimanipulasi lewat browser.
         // ==========================================================
         const KANTOR = {
-            nama: @json(config('kantor.nama')),
-            lat: {{ config('kantor.latitude') }},
-            lng: {{ config('kantor.longitude') }},
-            radius: {{ config('kantor.radius_meter') }}
-        };
+    nama: @json(Auth::user()?->karyawan?->perusahaan?->nama_perusahaan ?? config('kantor.nama')),
+    lat: {{ config('kantor.latitude') }},
+    lng: {{ config('kantor.longitude') }},
+    radius: {{ config('kantor.radius_meter') }}
+};
 
         // Menyimpan teks lokasi yang sedang ditampilkan (nama kantor ATAU
         // hasil reverse-geocoding), supaya bisa ikut dikirim ke server

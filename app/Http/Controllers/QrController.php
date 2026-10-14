@@ -84,9 +84,10 @@ class QrController extends Controller
             'nama_jalan' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $karyawan = Karyawan::where('barcode_uid', $request->token)
-            ->where('status', 'aktif')
-            ->first();
+        $karyawan = Karyawan::with('perusahaan')
+    ->where('barcode_uid', $request->token)
+    ->where('status', 'aktif')
+    ->first();
 
         if (! $karyawan) {
             return back()->withErrors(['token' => 'QR tidak dikenali atau karyawan tidak aktif.']);
@@ -117,7 +118,8 @@ class QrController extends Controller
         $statusRadius = $dalamRadius ? 'dalam_radius' : 'luar_radius';
 
         // Dalam radius -> nama kantor; di luar -> alamat hasil reverse-geocoding browser.
-        $alamat = $dalamRadius ? config('kantor.nama') : ($request->alamat ?: 'Alamat tidak diketahui');
+        $namaLokasi = $karyawan->perusahaan->nama_perusahaan ?? config('kantor.nama');
+        $alamat = $dalamRadius ? $namaLokasi : ($request->alamat ?: 'Alamat tidak diketahui');
 
         // Nama jalan SELALU dari reverse-geocoding browser, terlepas dari status radius.
         $namaJalan = $request->nama_jalan ?: null;
