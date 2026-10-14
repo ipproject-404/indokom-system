@@ -69,6 +69,20 @@
     $lokasiPulangTampil = $presensiHariIni && $presensiHariIni->status_radius_pulang === 'dalam_radius'
         ? $presensiHariIni->alamat_pulang
         : $presensiHariIni?->nama_jalan_pulang;
+
+        // Pelatihan yang akan datang atau sedang berjalan untuk karyawan ini
+$notifPelatihan = collect();
+if ($karyawan) {
+    $notifPelatihan = \App\Models\PesertaPelatihan::with('pelatihan')
+        ->where('karyawan_id', $karyawan->id)
+        ->whereHas('pelatihan', fn($q) => $q
+            ->where('status', 'aktif')
+            ->where('tanggal_selesai', '>=', now()->toDateString())
+        )
+        ->get()
+        ->pluck('pelatihan')
+        ->sortBy('tanggal_mulai');
+}
 @endphp
 
 {{-- ================================================================
@@ -236,7 +250,38 @@
             </a>
         @endif
 
-        <h6 class="fw-bold mb-3 ms-1">Menu Aplikasi sistem</h6>
+            {{-- Notifikasi Pelatihan --}}
+@if($notifPelatihan->isNotEmpty())
+    @foreach($notifPelatihan as $np)
+    @php
+        $berjalan = $np->sedangBerjalan();
+        $warna = $berjalan ? '#16a34a' : '#2563eb';
+        $bg    = $berjalan ? '#f0fdf4' : '#eff6ff';
+        $ikon  = $berjalan ? 'bi-mortarboard-fill' : 'bi-bell-fill';
+        $label = $berjalan ? 'Sedang Berjalan' : 'Akan Datang';
+    @endphp
+    <a href="{{ route('pelatihan.karyawan') }}" class="text-decoration-none">
+        <div class="modern-card d-flex align-items-center gap-3 p-3 mb-3" style="border-left: 3px solid {{ $warna }};">
+            <div style="width:40px;height:40px;background:{{ $bg }};color:{{ $warna }};display:flex;align-items:center;justify-content:center;border-radius:12px;flex-shrink:0;">
+                <i class="bi {{ $ikon }}"></i>
+            </div>
+            <div class="flex-grow-1 min-width-0">
+                <div class="fw-bold" style="color:#1e293b;font-size:.85rem;">{{ $np->nama_pelatihan }}</div>
+                <div class="text-muted" style="font-size:.72rem;">
+                    {{ $label }} &middot;
+                    {{ $np->tanggal_mulai->translatedFormat('d M Y') }}
+                    @if($np->tanggal_selesai && !$np->tanggal_mulai->isSameDay($np->tanggal_selesai))
+                        – {{ $np->tanggal_selesai->translatedFormat('d M Y') }}
+                    @endif
+                </div>
+            </div>
+            <i class="bi bi-chevron-right text-muted"></i>
+        </div>
+    </a>
+    @endforeach
+@endif
+
+        <h6 class="fw-bold mb-3 ms-1">Menu Aplikasi</h6>
         <div class="modern-card p-3 mb-4">
             <div class="row row-cols-4 g-3">
                 @foreach ($menuAplikasi as $item)
@@ -573,6 +618,29 @@
                 </div>
             </div>
         </div>
+
+        {{-- Notifikasi Pelatihan --}}
+@if($notifPelatihan->isNotEmpty())
+<div class="panel mb-3">
+    <h6>Jadwal Pelatihan</h6>
+    @foreach($notifPelatihan as $np)
+    @php
+        $berjalan = $np->sedangBerjalan();
+        $warna = $berjalan ? '#16a34a' : '#2563eb';
+        $bg    = $berjalan ? '#f0fdf4' : '#eff6ff';
+    @endphp
+    <a href="{{ route('pelatihan.karyawan') }}" class="aksi-cepat-item" style="border-left: 3px solid {{ $warna }}; margin-bottom: 4px;">
+        <span class="icon-box" style="background:{{ $bg }}; color:{{ $warna }};">
+            <i class="bi {{ $berjalan ? 'bi-mortarboard-fill' : 'bi-bell-fill' }}"></i>
+        </span>
+        <span>
+            <span class="judul d-block">{{ $np->nama_pelatihan }}</span>
+            <span class="sub">{{ $berjalan ? 'Sedang berjalan' : 'Akan datang' }} &middot; {{ $np->tanggal_mulai->translatedFormat('d M Y') }}</span>
+        </span>
+    </a>
+    @endforeach
+</div>
+@endif
 
         {{-- Pengumuman --}}
         <div class="panel p-0 overflow-hidden">

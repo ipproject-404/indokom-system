@@ -138,5 +138,10 @@ class Karyawan extends Model
     public function punyaHak(string $hak): bool
     {
         return $this->hakAkses()->where('hak', $hak)->exists();
-    }   
+    }
+    
+    public function pelatihanDiikuti()
+{
+    return $this->hasMany(PesertaPelatihan::class);
+}
 }

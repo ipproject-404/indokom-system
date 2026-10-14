@@ -93,6 +93,14 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
 
     // Shift karyawan (hanya lihat; shift diatur kepala bagian)
     Route::get('/hrd/shift', [ShiftHrdController::class, 'index'])->name('shift.hrd.index');
+
+    //pelatihan & sertifikasi
+    Route::get('/hrd/pelatihan', [App\Http\Controllers\PelatihanController::class, 'index'])->name('pelatihan.index');
+    Route::post('/hrd/pelatihan', [App\Http\Controllers\PelatihanController::class, 'store'])->name('pelatihan.store');
+    Route::put('/hrd/pelatihan/{pelatihan}', [App\Http\Controllers\PelatihanController::class, 'update'])->name('pelatihan.update');
+    Route::delete('/hrd/pelatihan/{pelatihan}', [App\Http\Controllers\PelatihanController::class, 'destroy'])->name('pelatihan.destroy');
+    Route::post('/hrd/pelatihan/{pelatihan}/peserta', [App\Http\Controllers\PelatihanController::class, 'tambahPeserta'])->name('pelatihan.peserta.tambah');
+    Route::delete('/hrd/pelatihan/{pelatihan}/peserta/{karyawan}', [App\Http\Controllers\PelatihanController::class, 'hapusPeserta'])->name('pelatihan.peserta.hapus');
 });
 
 Route::middleware(['auth', 'role:karyawan,hrd', 'kepala.bagian'])->group(function () {
@@ -106,6 +114,7 @@ Route::middleware(['auth', 'role:karyawan,hrd'])->group(function () {
     Route::get('/lembur-karyawan', [LemburKaryawanController::class, 'index'])->name('lembur.karyawan');
     Route::post('/lembur-karyawan', [LemburKaryawanController::class, 'store'])->name('lembur.karyawan.store');
     Route::delete('/lembur-karyawan/{id}', [LemburKaryawanController::class, 'batal'])->name('lembur.karyawan.batal');
+    Route::get('/pelatihan-saya', [App\Http\Controllers\PelatihanKaryawanController::class, 'index'])->name('pelatihan.karyawan');
 });
 
 Route::middleware(['auth', 'role:karyawan,hrd', 'hak:payroll'])->group(function () {

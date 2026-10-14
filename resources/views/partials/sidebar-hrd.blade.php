@@ -11,6 +11,7 @@
             ['label' => 'Daftar Karyawan', 'icon' => 'bi-people-fill', 'route' => 'karyawan.index', 'aktif' => ['karyawan.index', 'karyawan.show', 'karyawan.edit']],
             ['label' => 'Tambah Karyawan', 'icon' => 'bi-person-plus-fill', 'route' => 'karyawan.create', 'aktif' => ['karyawan.create']],
             ['label' => 'Jabatan & Departemen', 'icon' => 'bi-diagram-3-fill', 'route' => 'jabatan.departemen.index', 'aktif' => ['jabatan.departemen.index']],
+            ['label' => 'Pelatihan & Sertifikasi', 'icon' => 'bi-mortarboard-fill', 'route' => 'pelatihan.index', 'aktif' => ['pelatihan.index']],
         ],
         'Kehadiran & QR' => [
             ['label' => 'Manajemen QR Code', 'icon' => 'bi-qr-code-scan', 'route' => 'karyawan.qr.index', 'aktif' => ['karyawan.qr.index']],
