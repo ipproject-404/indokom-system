@@ -43,19 +43,58 @@
     $sudahPulang = (bool) $presensiHariIni?->jam_pulang;
     $absenSelesai = $sudahMasuk && $sudahPulang;
 
+    $statusManualHariIni = $presensiHariIni?->status_kehadiran ?? null;
+$isStatusManualBlock  = ($presensiHariIni?->metode_presensi === 'MANUAL_HRD')
+    && in_array($statusManualHariIni, ['izin', 'cuti', 'sakit', 'alpa', 'libur_nasional', 'dinas_luar']);
+
+$labelStatusManualMap = [
+    'izin'           => 'Izin',
+    'cuti'           => 'Cuti',
+    'sakit'          => 'Sakit',
+    'alpa'           => 'Alpa',
+    'dinas_luar'     => 'Dinas Luar',
+    'libur_nasional' => 'Libur Nasional',
+];
+$labelStatusManual = $labelStatusManualMap[$statusManualHariIni] ?? null;
+
+$ikonStatusManualMap = [
+    'izin'           => 'bi-envelope-fill',
+    'cuti'           => 'bi-airplane-fill',
+    'sakit'          => 'bi-bandaid-fill',
+    'alpa'           => 'bi-x-octagon-fill',
+    'dinas_luar'     => 'bi-briefcase-fill',
+    'libur_nasional' => 'bi-calendar-x-fill',
+];
+$ikonStatusManual = $ikonStatusManualMap[$statusManualHariIni] ?? 'bi-info-circle';
+
+$warnaStatusManualMap = [
+    'izin'           => '#d97706',
+    'cuti'           => '#7c3aed',
+    'sakit'          => '#2563eb',
+    'alpa'           => '#dc2626',
+    'dinas_luar'     => '#ea580c',
+    'libur_nasional' => '#475569',
+];
+$warnaStatusManual = $warnaStatusManualMap[$statusManualHariIni] ?? '#64748b';
+
     $bolehAbsenPulang = true;
     if ($sudahMasuk && !$sudahPulang) {
         $batasAbsenPulang = $presensiHariIni->waktuMasukLengkap()->addHour();
         $bolehAbsenPulang = \Carbon\Carbon::now()->greaterThanOrEqualTo($batasAbsenPulang);
     }
 
-    $tombolAbsenAktif = !$absenSelesai && $bolehAbsenPulang;
+    $tombolAbsenAktif = !$absenSelesai && $bolehAbsenPulang && !$isStatusManualBlock;
+    $labelStatusAbsen = $isStatusManualBlock
+    ? $labelStatusManual
+    : (!$presensiHariIni ? 'Clock In' : (!$presensiHariIni->jam_pulang ? 'Clock Out' : 'Selesai Hari Ini'));
 
-    $pesanTombolNonaktif = $absenSelesai
+    $pesanTombolNonaktif = $isStatusManualBlock
+    ? "Status kehadiran hari ini sudah dicatat HRD: {$labelStatusManual}. Tidak perlu absen."
+    : ($absenSelesai
         ? 'Kamu sudah absen masuk dan pulang hari ini.'
         : (! $bolehAbsenPulang
             ? 'Absen pulang baru bisa dilakukan mulai pukul ' . $batasAbsenPulang->format('H:i') . ' (minimal 1 jam setelah absen masuk).'
-            : '');
+            : ''));
 
     // Info lokasi buat pelengkap tampilan jam masuk/pulang.
     // Dalam radius kantor -> tampilkan nama PT (dari alamat_masuk/pulang,
@@ -219,9 +258,21 @@ if ($karyawan) {
                 </div>
             </div>
 
-            <a href="{{ route('absensi.scan') }}" class="btn btn-primary w-100 py-3 fw-bold rounded-3 shadow-sm d-flex justify-content-center align-items-center" onclick="return cekTombolAbsen(event)">
-                <i class="bi bi-qr-code-scan me-2 fs-5"></i> {{ $labelStatusAbsen }}
-            </a>
+            @if ($isStatusManualBlock)
+    <div class="d-flex align-items-center justify-content-center gap-2 py-3 px-4 rounded-3 fw-bold"
+         style="background: {{ $warnaStatusManual }}1a; color: {{ $warnaStatusManual }}; border: 1.5px solid {{ $warnaStatusManual }}40; font-size: .9rem;">
+        <i class="bi {{ $ikonStatusManual }} fs-5"></i>
+        Status Hari Ini: {{ $labelStatusManual }}
+    </div>
+    <p class="text-muted text-center mt-2" style="font-size: .75rem;">
+        <i class="bi bi-info-circle"></i>
+        Status dicatat oleh HRD. Tidak perlu absen hari ini.
+    </p>
+@else
+    <a href="{{ route('absensi.scan') }}" class="btn btn-primary w-100 py-3 fw-bold rounded-3 shadow-sm d-flex justify-content-center align-items-center" onclick="return cekTombolAbsen(event)">
+        <i class="bi bi-qr-code-scan me-2 fs-5"></i> {{ $labelStatusAbsen }}
+    </a>
+@endif
         </div>
 
                 @if ($isHrd)
@@ -318,8 +369,13 @@ if ($karyawan) {
      Berdiri sendiri, tidak pakai class/style dari versi HP di atas.
 ================================================================ --}}
 @php
-    $statusHariIni = !$presensiHariIni ? 'Belum Absen' : (!$presensiHariIni->jam_pulang ? 'Sudah Masuk' : 'Selesai');
-    $statusWarna = !$presensiHariIni ? '#f59e0b' : (!$presensiHariIni->jam_pulang ? '#16a34a' : '#64748b');
+    $statusHariIni = $isStatusManualBlock
+    ? ($labelStatusManual ?? 'Manual HRD')
+    : (!$presensiHariIni ? 'Belum Absen' : (!$presensiHariIni->jam_pulang ? 'Sudah Masuk' : 'Selesai'));
+
+$statusWarna = $isStatusManualBlock
+    ? ($warnaStatusManual ?? '#64748b')
+    : (!$presensiHariIni ? '#f59e0b' : (!$presensiHariIni->jam_pulang ? '#16a34a' : '#64748b'));
 @endphp
 <style>
     .desktop-shell { display: none; }
@@ -585,9 +641,17 @@ if ($karyawan) {
                             <div class="time-display" id="realtime-clock-desktop">--:--:--</div>
                             <div class="small opacity-75 mt-1">WIB</div>
                         </div>
-                        <a href="{{ route('absensi.scan') }}" class="btn-clock" onclick="return cekTombolAbsen(event)">
-                            <i class="bi bi-qr-code-scan"></i> {{ $labelStatusAbsen }}
-                        </a>
+                        @if ($isStatusManualBlock)
+    <div class="d-inline-flex align-items-center gap-2 py-2 px-4 rounded-3 fw-bold"
+         style="background: rgba(255,255,255,0.2); border: 1.5px solid rgba(255,255,255,0.4); font-size: .88rem;">
+        <i class="bi {{ $ikonStatusManual }}"></i>
+        {{ $labelStatusManual }} — Tidak Perlu Absen
+    </div>
+@else
+    <a href="{{ route('absensi.scan') }}" class="btn-clock" onclick="return cekTombolAbsen(event)">
+        <i class="bi bi-qr-code-scan"></i> {{ $labelStatusAbsen }}
+    </a>
+@endif
                     </div>
                 </div>
             </div>
