@@ -10,32 +10,26 @@
     <script>
         const karyawanPerDepartemen = @json($karyawanPerDepartemen);
 
-        function bukaModalEditDepartemen(id, nama, divisiId, kepalaId) {
-            document.getElementById('edit_dept_id').value = id;
-            document.getElementById('edit_nama_departemen').value = nama;
-            document.getElementById('edit_divisi_id').value = divisiId ?? '';
-            document.getElementById('formEditDepartemen').action = "/hrd/departemen/" + id;
+        function bukaModalEditDepartemen(id, nama, divisiId, kepalaId, bolehLembur) {
+    document.getElementById('edit_dept_id').value = id;
+    document.getElementById('edit_nama_departemen').value = nama;
+    document.getElementById('edit_divisi_id').value = divisiId ?? '';
+    document.getElementById('edit_boleh_lembur').checked = bolehLembur == 1;
+    document.getElementById('formEditDepartemen').action = "/hrd/departemen/" + id;
 
-            const selectKepala = document.getElementById('edit_kepala_karyawan_id');
-            selectKepala.innerHTML = '<option value="">-- Belum ada kepala ditunjuk --</option>';
-            const daftarKaryawan = karyawanPerDepartemen[id] || [];
-            daftarKaryawan.forEach(function (k) {
-                const opt = document.createElement('option');
-                opt.value = k.id;
-                opt.textContent = k.nama_lengkap;
-                if (kepalaId && String(k.id) === String(kepalaId)) opt.selected = true;
-                selectKepala.appendChild(opt);
-            });
-            if (daftarKaryawan.length === 0) {
-                const opt = document.createElement('option');
-                opt.value = '';
-                opt.textContent = 'Belum ada karyawan di departemen ini';
-                opt.disabled = true;
-                selectKepala.appendChild(opt);
-            }
+    const selectKepala = document.getElementById('edit_kepala_karyawan_id');
+    selectKepala.innerHTML = '<option value="">-- Belum ada kepala ditunjuk --</option>';
+    const daftarKaryawan = karyawanPerDepartemen[id] || [];
+    daftarKaryawan.forEach(function (k) {
+        const opt = document.createElement('option');
+        opt.value = k.id;
+        opt.textContent = k.nama_lengkap;
+        if (kepalaId && String(k.id) === String(kepalaId)) opt.selected = true;
+        selectKepala.appendChild(opt);
+    });
 
-            document.getElementById('modalEditDepartemen').classList.remove('hidden');
-        }
+    document.getElementById('modalEditDepartemen').classList.remove('hidden');
+}
         function tutupModalEditDepartemen() {
             document.getElementById('modalEditDepartemen').classList.add('hidden');
         }
@@ -256,6 +250,12 @@
                                             <span class="inline-flex items-center bg-white/15 rounded px-1.5 py-0.5">
                                                 <i class="bi bi-person-badge mr-1"></i>{{ $dept->kepalaKaryawan->nama_lengkap ?? 'Belum ditunjuk' }}
                                             </span>
+                                            {{-- di dalam header kartu departemen, setelah badge kepala bagian --}}
+@if($dept->boleh_lembur)
+    <span class="inline-flex items-center bg-white/15 rounded px-1.5 py-0.5">
+        <i class="bi bi-clock-history mr-1"></i>Lembur aktif
+    </span>
+@endif
                                         </div>
                                     </div>
                                 </div>
@@ -263,7 +263,7 @@
                                     <span class="bg-white text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
                                         {{ $listJabatan->count() }} Jabatan
                                     </span>
-                                    <button onclick="bukaModalEditDepartemen('{{ $dept->id }}', '{{ $dept->nama_departemen }}', '{{ $dept->divisi_id }}', '{{ $dept->kepala_karyawan_id }}')" class="text-blue-100 hover:text-white hover:bg-white/20 rounded p-1 transition-colors" title="Edit Departemen">
+                                    <button onclick="bukaModalEditDepartemen('{{ $dept->id }}', '{{ $dept->nama_departemen }}', '{{ $dept->divisi_id }}', '{{ $dept->kepala_karyawan_id }}', '{{ $dept->boleh_lembur ? 1 : 0 }}')" class="text-blue-100 hover:text-white hover:bg-white/20 rounded p-1 transition-colors" title="Edit Departemen">
                                         <i class="bi bi-pencil-square text-sm"></i>
                                     </button>
                                     <form action="{{ route('departemen.destroy', $dept->id) }}" method="POST" onsubmit="return confirm('Hapus departemen {{ $dept->nama_departemen }}?');" class="inline">
@@ -372,6 +372,20 @@
                 </select>
                 <p class="text-xs text-gray-400 mt-1">Hanya karyawan yang sudah ada di departemen ini yang muncul di daftar.</p>
             </div>
+
+            <div class="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-lg p-3">
+    <input type="hidden" name="boleh_lembur" value="0">
+    <input type="checkbox" id="edit_boleh_lembur" name="boleh_lembur" value="1"
+        class="mt-1 w-4 h-4 accent-amber-500 rounded">
+    <label for="edit_boleh_lembur" class="cursor-pointer">
+        <span class="block text-sm font-medium text-gray-700">Departemen ini boleh lembur</span>
+        <span class="block text-[11px] text-gray-500 mt-0.5">
+            Semua karyawan di departemen ini akan otomatis bisa mengajukan lembur.
+            Kalau dicabut, izin lembur semua karyawan di sini ikut dicabut.
+        </span>
+    </label>
+</div>
+
             <div class="flex justify-end gap-2">
                 <button type="button" onclick="tutupModalEditDepartemen()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors">
                     Batal

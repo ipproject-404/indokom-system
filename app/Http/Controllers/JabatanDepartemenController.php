@@ -45,25 +45,34 @@ class JabatanDepartemenController extends Controller
     }
 
     public function updateDepartemen(Request $request, $id)
-    {
-        $request->validate([
-            'nama_departemen' => 'required|string|max:255|unique:departemen,nama_departemen,' . $id,
-            'divisi_id' => 'required|exists:divisi,id',
-            // Kepala bagian boleh kosong (belum ditunjuk), tapi kalau diisi
-            // harus karyawan yang memang berada di departemen ini -- supaya
-            // tidak ada yang kepencet pilih orang dari departemen lain.
-            'kepala_karyawan_id' => 'nullable|exists:karyawan,id,departemen_id,' . $id,
-        ]);
+{
+    $request->validate([
+        'nama_departemen'    => 'required|string|max:255|unique:departemen,nama_departemen,' . $id,
+        'divisi_id'          => 'required|exists:divisi,id',
+        'kepala_karyawan_id' => 'nullable|exists:karyawan,id,departemen_id,' . $id,
+        'boleh_lembur'       => 'nullable|boolean',
+    ]);
 
-        $departemen = Departemen::findOrFail($id);
-        $departemen->update([
-            'nama_departemen' => $request->nama_departemen,
-            'divisi_id' => $request->divisi_id,
-            'kepala_karyawan_id' => $request->kepala_karyawan_id ?: null,
-        ]);
+    $departemen = Departemen::findOrFail($id);
+    $bolehLemburBaru = $request->boolean('boleh_lembur');
+    $berubah = $departemen->boleh_lembur !== $bolehLemburBaru;
 
-        return redirect()->route('jabatan.departemen.index')->with('success', 'Data departemen berhasil diperbarui!');
+    $departemen->update([
+        'nama_departemen'    => $request->nama_departemen,
+        'divisi_id'          => $request->divisi_id,
+        'kepala_karyawan_id' => $request->kepala_karyawan_id ?: null,
+        'boleh_lembur'       => $bolehLemburBaru,
+    ]);
+
+    // Sinkron semua karyawan di departemen ini kalau boleh_lembur berubah
+    if ($berubah) {
+        $departemen->karyawan()->update(['boleh_lembur' => $bolehLemburBaru]);
     }
+
+    return redirect()->route('jabatan.departemen.index')
+        ->with('success', 'Data departemen berhasil diperbarui!' .
+            ($berubah ? ' Izin lembur karyawan di departemen ini ikut diperbarui.' : ''));
+}
 
     public function destroyDepartemen($id)
     {

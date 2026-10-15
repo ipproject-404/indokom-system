@@ -2,9 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Karyawan;
 use App\Models\Lembur;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use App\Observers\KaryawanObserver;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Karyawan::observe(KaryawanObserver::class);
         // Badge jumlah lembur menunggu di sidebar HRD, tersedia di semua
         // halaman HRD tanpa tiap controller harus mengirimnya.
         View::composer('partials.sidebar-hrd', function ($view) {
