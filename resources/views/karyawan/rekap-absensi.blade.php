@@ -59,13 +59,13 @@
             $pulang = $p->waktuPulangLengkap();
 
             $durasi = null;
-            if ($pulang) {
+            if ($masuk &&$pulang) {
                 $menit = (int) abs($masuk->diffInMinutes($pulang));
                 $durasi = intdiv($menit, 60) . ' jam ' . ($menit % 60) . ' menit';
             }
 
             $detail += [
-                'jam_masuk' => $masuk->format('H:i'),
+                'jam_masuk' => $masuk?->format('H:i'),
                 'jam_pulang' => $pulang?->format('H:i'),
                 'durasi' => $durasi,
                 'lokasi_masuk' => $formatLokasi($p->status_radius_masuk, $p->alamat_masuk, $p->nama_jalan_masuk),

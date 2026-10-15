@@ -136,19 +136,26 @@ class RekapAbsensiController extends Controller
             $shiftPakai = $isLibur ? null : ($presensi?->shift ?? $shiftJadwal);
 
             if ($presensi && $dasarAbsensi === 'jadwal' && $shiftPakai) {
+
+
                 $masukStandar = $shiftPakai->waktuMasuk($tgl);
-                $masuk = $presensi->waktuMasukLengkap();
+$masuk = $presensi->waktuMasukLengkap();
 
-                if ($masuk->copy()->startOfMinute()->gt($masukStandar->copy()->addMinutes($shiftPakai->toleransi_menit))) {
-                    $terlambatMenit = (int) floor(abs($masukStandar->diffInMinutes($masuk)));
-                    $status = 'terlambat';
-                }
+// Tambahkan pengecekan if ($masuk && $masukStandar) di sini
+if ($masuk && $masukStandar) {
+    if ($masuk->copy()->startOfMinute()->gt($masukStandar->copy()->addMinutes($shiftPakai->toleransi_menit))) {
+        $terlambatMenit = (int) floor(abs($masukStandar->diffInMinutes($masuk)));
+        $status = 'terlambat';
+    }
+}
 
-                $pulangStandar = $shiftPakai->waktuPulang($tgl);
-                $pulang = $presensi->waktuPulangLengkap();
-                if ($pulang && $pulang->lt($pulangStandar)) {
-                    $pulangAwalMenit = (int) floor(abs($pulang->diffInMinutes($pulangStandar)));
-                }
+$pulangStandar = $shiftPakai->waktuPulang($tgl);
+$pulang = $presensi->waktuPulangLengkap();
+
+// Tambahkan juga pengecekan $pulangStandar untuk mencegah error serupa di masa depan
+if ($pulang && $pulangStandar && $pulang->lt($pulangStandar)) {
+    $pulangAwalMenit = (int) floor(abs($pulang->diffInMinutes($pulangStandar)));
+}
 
                 $jamStandar = substr($shiftPakai->jam_masuk, 0, 5) . ' - '
                     . substr($shiftPakai->jamPulangUntukHari($tgl->dayOfWeekIso), 0, 5);
