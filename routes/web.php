@@ -12,6 +12,7 @@ use App\Http\Controllers\ShiftTimController;
 use App\Http\Controllers\ShiftHrdController;
 use App\Http\Controllers\LemburKaryawanController;
 use App\Http\Controllers\LemburPayrollController;
+use App\Http\Controllers\PelatihanController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -94,13 +95,32 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     // Shift karyawan (hanya lihat; shift diatur kepala bagian)
     Route::get('/hrd/shift', [ShiftHrdController::class, 'index'])->name('shift.hrd.index');
 
-    //pelatihan & sertifikasi
-    Route::get('/hrd/pelatihan', [App\Http\Controllers\PelatihanController::class, 'index'])->name('pelatihan.index');
-    Route::post('/hrd/pelatihan', [App\Http\Controllers\PelatihanController::class, 'store'])->name('pelatihan.store');
-    Route::put('/hrd/pelatihan/{pelatihan}', [App\Http\Controllers\PelatihanController::class, 'update'])->name('pelatihan.update');
-    Route::delete('/hrd/pelatihan/{pelatihan}', [App\Http\Controllers\PelatihanController::class, 'destroy'])->name('pelatihan.destroy');
-    Route::post('/hrd/pelatihan/{pelatihan}/peserta', [App\Http\Controllers\PelatihanController::class, 'tambahPeserta'])->name('pelatihan.peserta.tambah');
-    Route::delete('/hrd/pelatihan/{pelatihan}/peserta/{karyawan}', [App\Http\Controllers\PelatihanController::class, 'hapusPeserta'])->name('pelatihan.peserta.hapus');
+    // ================================================================
+    // PELATIHAN & SERTIFIKASI
+    // ================================================================
+
+    // CRUD Pelatihan
+    Route::get('/hrd/pelatihan', [PelatihanController::class, 'index'])->name('pelatihan.index');
+    Route::post('/hrd/pelatihan', [PelatihanController::class, 'store'])->name('pelatihan.store');
+    Route::put('/hrd/pelatihan/{pelatihan}', [PelatihanController::class, 'update'])->name('pelatihan.update');
+    Route::delete('/hrd/pelatihan/{pelatihan}', [PelatihanController::class, 'destroy'])->name('pelatihan.destroy');
+
+    // Peserta
+    Route::post('/hrd/pelatihan/{pelatihan}/peserta', [PelatihanController::class, 'tambahPeserta'])->name('pelatihan.peserta.tambah');
+    Route::delete('/hrd/pelatihan/{pelatihan}/peserta/{karyawan}', [PelatihanController::class, 'hapusPeserta'])->name('pelatihan.peserta.hapus');
+
+    // Nilai (bulk per pelatihan)
+    Route::post('/hrd/pelatihan/{pelatihan}/nilai', [PelatihanController::class, 'simpanNilaiBulk'])->name('pelatihan.nilai.simpan');
+
+    // Cetak semua sertifikat peserta lulus (1 PDF multi-page)
+    Route::get('/hrd/pelatihan/{pelatihan}/cetak-semua', [PelatihanController::class, 'cetakSemuaSertifikat'])->name('pelatihan.cetak-semua');
+
+    // Export peserta per pelatihan
+    Route::get('/hrd/pelatihan/{pelatihan}/export-excel', [PelatihanController::class, 'exportPesertaExcel'])->name('pelatihan.export-peserta-excel');
+    Route::get('/hrd/pelatihan/{pelatihan}/export-pdf',   [PelatihanController::class, 'exportPesertaPdf'])->name('pelatihan.export-peserta-pdf');
+
+    // Hapus satu data nilai (opsional, untuk koreksi)
+    Route::delete('/hrd/pelatihan/{pelatihan}/sertifikasi/{sertifikasi}', [PelatihanController::class, 'hapusSertifikasi'])->name('pelatihan.sertifikasi.hapus');
 });
 
 Route::middleware(['auth', 'role:karyawan,hrd', 'kepala.bagian'])->group(function () {

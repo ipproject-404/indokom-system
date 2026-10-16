@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 class Pelatihan extends Model
 {
@@ -33,6 +33,11 @@ class Pelatihan extends Model
     public function pembuat()
     {
         return $this->belongsTo(User::class, 'dibuat_oleh');
+    }
+
+    public function sertifikasi()
+    {
+        return $this->hasMany(SertifikasiKaryawan::class);
     }
 
     /** Apakah pelatihan sedang berjalan sekarang. */

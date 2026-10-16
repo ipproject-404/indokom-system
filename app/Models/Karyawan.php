@@ -141,7 +141,12 @@ class Karyawan extends Model
     }
     
     public function pelatihanDiikuti()
-{
-    return $this->hasMany(PesertaPelatihan::class);
-}
+    {
+        return $this->hasMany(PesertaPelatihan::class);
+    }
+
+    public function sertifikasi()
+    {
+        return $this->hasMany(SertifikasiKaryawan::class);
+    }
 }
