@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Pelatihan & Sertifikasi - HRD</title>
-    <link rel="icon" href="{{ asset('favicon.png') }}" type="image/x-icon">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -185,7 +184,9 @@
                         default               => 'Internal',
                     };
 
-                    $bisaKelolaPeserta   = $p->status === 'aktif';
+                    // UBAH DI SINI: Izinkan kelola peserta untuk status aktif & selesai
+                    $bisaKelolaPeserta   = in_array($p->status, ['aktif', 'selesai']);
+                    
                     $bisaInputNilai      = $p->status === 'selesai';
                     $bisaDihapus         = $p->status === 'dibatalkan';
                     $bisaDibatalkan      = $p->status === 'aktif';
@@ -367,17 +368,21 @@
                     <div x-show="bukaDetail" x-collapse class="border-t border-gray-100">
                         <div class="p-5 bg-gray-50">
 
-                            @if(!$bisaKelolaPeserta)
-                                <div class="mb-4 flex items-start gap-2 {{ $bisaInputNilai ? 'bg-violet-50 border-violet-200 text-violet-800' : 'bg-amber-50 border-amber-200 text-amber-800' }} border px-3 py-2.5 rounded-lg text-xs">
-                                    <i class="bi {{ $bisaInputNilai ? 'bi-clipboard-data-fill' : 'bi-info-circle-fill' }} mt-0.5 shrink-0"></i>
+                            {{-- PERBAIKAN BANNER NOTIFIKASI --}}
+                            @if($bisaInputNilai)
+                                <div class="mb-4 flex items-start gap-2 bg-violet-50 border border-violet-200 text-violet-800 px-3 py-2.5 rounded-lg text-xs">
+                                    <i class="bi bi-clipboard-data-fill mt-0.5 shrink-0"></i>
                                     <div>
-                                        @if($bisaInputNilai)
-                                            <span class="font-bold">Input Nilai di level Pelatihan.</span>
-                                            Klik tombol <strong>"Input Nilai Peserta"</strong> di atas untuk isi semua nilai sekaligus.
-                                        @else
-                                            <span class="font-bold">Mode Lihat Saja.</span>
-                                            Pelatihan sudah <span class="font-bold">{{ strtolower($labelStatus) }}</span>.
-                                        @endif
+                                        <span class="font-bold">Siap Input Nilai & Tambah Peserta.</span>
+                                        Pelatihan sudah selesai. Anda masih bisa menambah peserta baru (catch-up), lalu klik <strong>"Input Nilai Peserta"</strong> di atas untuk mengisi nilai mereka.
+                                    </div>
+                                </div>
+                            @elseif($p->status === 'dibatalkan')
+                                <div class="mb-4 flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2.5 rounded-lg text-xs">
+                                    <i class="bi bi-info-circle-fill mt-0.5 shrink-0"></i>
+                                    <div>
+                                        <span class="font-bold">Mode Lihat Saja.</span>
+                                        Pelatihan sudah dibatalkan, daftar peserta tidak dapat diubah lagi.
                                     </div>
                                 </div>
                             @endif

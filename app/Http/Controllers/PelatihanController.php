@@ -54,7 +54,7 @@ class PelatihanController extends Controller
     }
 
     // ================================================================
-    // EXPORT PESERTA PER PELATIHAN — Excel (inline HTML)
+    // EXPORT EXCEL — Peserta per Pelatihan
     // ================================================================
     public function exportPesertaExcel(Pelatihan $pelatihan)
     {
@@ -254,7 +254,7 @@ class PelatihanController extends Controller
     }
 
     // ================================================================
-    // EXPORT PESERTA PER PELATIHAN — PDF (inline HTML)
+    // EXPORT PDF — Peserta per Pelatihan
     // ================================================================
     public function exportPesertaPdf(Pelatihan $pelatihan)
     {
@@ -491,10 +491,14 @@ class PelatihanController extends Controller
         return back()->with('success', 'Pelatihan dihapus.');
     }
 
+    // ================================================================
+    // TAMBAH PESERTA (Diperbarui: Izinkan status 'aktif' & 'selesai')
+    // ================================================================
     public function tambahPeserta(Request $request, Pelatihan $pelatihan)
     {
-        if ($pelatihan->status !== 'aktif') {
-            return back()->with('error', 'Pelatihan sudah ' . $pelatihan->status . '. Daftar peserta tidak dapat diubah.');
+        // Cek: Hanya blokir kalau status dibatalkan
+        if (!in_array($pelatihan->status, ['aktif', 'selesai'])) {
+            return back()->with('error', 'Pelatihan sudah dibatalkan. Daftar peserta tidak dapat diubah.');
         }
 
         $request->validate([
@@ -528,10 +532,14 @@ class PelatihanController extends Controller
         return back()->with('success', $pesan);
     }
 
+    // ================================================================
+    // HAPUS PESERTA (Diperbarui: Izinkan status 'aktif' & 'selesai')
+    // ================================================================
     public function hapusPeserta(Pelatihan $pelatihan, Karyawan $karyawan)
     {
-        if ($pelatihan->status !== 'aktif') {
-            return back()->with('error', 'Pelatihan sudah ' . $pelatihan->status . '. Daftar peserta tidak dapat diubah.');
+        // Cek: Hanya blokir kalau status dibatalkan
+        if (!in_array($pelatihan->status, ['aktif', 'selesai'])) {
+            return back()->with('error', 'Pelatihan sudah dibatalkan. Daftar peserta tidak dapat diubah.');
         }
 
         PesertaPelatihan::where('pelatihan_id', $pelatihan->id)

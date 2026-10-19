@@ -70,6 +70,9 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     // Kehadiran
     Route::get('/hrd/absensi/log-kehadiran', [App\Http\Controllers\PresensiController::class, 'logHarian'])->name('kehadiran.log');
     Route::get('/hrd/absensi/export-excel', [App\Http\Controllers\PresensiController::class, 'exportExcel'])->name('kehadiran.export');
+    
+    // ⬇️ ROUTE BARU UNTUK EXPORT MATRIX ⬇️
+    Route::get('/hrd/absensi/export-massal', [App\Http\Controllers\PresensiController::class, 'exportExcelMassal'])->name('kehadiran.export-massal');
 
     // ⭐ INPUT MANUAL HRD (Sakit / Izin / Cuti / Alpa / Dinas Luar / Libur)
     Route::post('/hrd/absensi/status-manual', [App\Http\Controllers\PresensiController::class, 'simpanStatusManual'])->name('kehadiran.status-manual');
