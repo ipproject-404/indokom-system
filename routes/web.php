@@ -131,14 +131,13 @@ Route::middleware(['auth', 'role:karyawan,hrd', 'kepala.bagian'])->group(functio
 
 // --- Lembur & Pelatihan Karyawan ---
 Route::middleware(['auth', 'role:karyawan,hrd'])->group(function () {
+    // ⬇️ LEMBUR: HANYA UNTUK MELIHAT (READ-ONLY) ⬇️
     Route::get('/lembur-karyawan', [LemburKaryawanController::class, 'index'])->name('lembur.karyawan');
-    Route::post('/lembur-karyawan', [LemburKaryawanController::class, 'store'])->name('lembur.karyawan.store');
-    Route::delete('/lembur-karyawan/{id}', [LemburKaryawanController::class, 'batal'])->name('lembur.karyawan.batal');
     
     // ⬇️ ROUTE PELATIHAN KARYAWAN ⬇️
     Route::get('/pelatihan-saya', [App\Http\Controllers\PelatihanKaryawanController::class, 'index'])->name('pelatihan.karyawan');
     
-    // ⬇️ ROUTE CETAK SERTIFIKAT PER ORANG (DITAMBAHKAN) ⬇️
+    // ⬇️ ROUTE CETAK SERTIFIKAT PER ORANG ⬇️
     Route::get('/sertifikasi/{sertifikasi}/cetak', [PelatihanController::class, 'cetakSertifikat'])->name('sertifikasi.cetak');
 });
 
