@@ -70,8 +70,6 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     // Kehadiran
     Route::get('/hrd/absensi/log-kehadiran', [App\Http\Controllers\PresensiController::class, 'logHarian'])->name('kehadiran.log');
     Route::get('/hrd/absensi/export-excel', [App\Http\Controllers\PresensiController::class, 'exportExcel'])->name('kehadiran.export');
-    
-    // ⬇️ ROUTE BARU UNTUK EXPORT MATRIX ⬇️
     Route::get('/hrd/absensi/export-massal', [App\Http\Controllers\PresensiController::class, 'exportExcelMassal'])->name('kehadiran.export-massal');
 
     // ⭐ INPUT MANUAL HRD (Sakit / Izin / Cuti / Alpa / Dinas Luar / Libur)
@@ -79,7 +77,7 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::post('/hrd/absensi/status-manual/multi', [App\Http\Controllers\PresensiController::class, 'simpanIzinMultiHari'])->name('kehadiran.status-manual.multi');
     Route::post('/hrd/absensi/status-manual/hapus', [App\Http\Controllers\PresensiController::class, 'hapusStatusManual'])->name('kehadiran.status-manual.hapus');
 
-    // LEMBUR HRD SUDAH DIHAPUS (dipindah ke role lain)
+    // Hak Akses
     Route::post('/hrd/karyawan/{id}/hak-akses', [App\Http\Controllers\HakAksesController::class, 'toggle'])->name('karyawan.hak-akses.toggle');
 
     // Jabatan & Departemen
@@ -95,14 +93,12 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::get('/hrd/profil', [ProfilController::class, 'index'])->name('profile.index');
     Route::post('/hrd/profil/update-password', [ProfilController::class, 'updatePassword'])->name('profile.update-password');
 
-    // Shift karyawan (hanya lihat; shift diatur kepala bagian)
+    // Shift karyawan
     Route::get('/hrd/shift', [ShiftHrdController::class, 'index'])->name('shift.hrd.index');
 
     // ================================================================
-    // PELATIHAN & SERTIFIKASI
+    // PELATIHAN & SERTIFIKASI (Khusus HRD)
     // ================================================================
-
-    // CRUD Pelatihan
     Route::get('/hrd/pelatihan', [PelatihanController::class, 'index'])->name('pelatihan.index');
     Route::post('/hrd/pelatihan', [PelatihanController::class, 'store'])->name('pelatihan.store');
     Route::put('/hrd/pelatihan/{pelatihan}', [PelatihanController::class, 'update'])->name('pelatihan.update');
@@ -112,34 +108,41 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::post('/hrd/pelatihan/{pelatihan}/peserta', [PelatihanController::class, 'tambahPeserta'])->name('pelatihan.peserta.tambah');
     Route::delete('/hrd/pelatihan/{pelatihan}/peserta/{karyawan}', [PelatihanController::class, 'hapusPeserta'])->name('pelatihan.peserta.hapus');
 
-    // Nilai (bulk per pelatihan)
+    // Nilai
     Route::post('/hrd/pelatihan/{pelatihan}/nilai', [PelatihanController::class, 'simpanNilaiBulk'])->name('pelatihan.nilai.simpan');
 
-    // Cetak semua sertifikat peserta lulus (1 PDF multi-page)
+    // Cetak semua sertifikat (Multi-page)
     Route::get('/hrd/pelatihan/{pelatihan}/cetak-semua', [PelatihanController::class, 'cetakSemuaSertifikat'])->name('pelatihan.cetak-semua');
 
-    // Export peserta per pelatihan
+    // Export
     Route::get('/hrd/pelatihan/{pelatihan}/export-excel', [PelatihanController::class, 'exportPesertaExcel'])->name('pelatihan.export-peserta-excel');
     Route::get('/hrd/pelatihan/{pelatihan}/export-pdf',   [PelatihanController::class, 'exportPesertaPdf'])->name('pelatihan.export-peserta-pdf');
 
-    // Hapus satu data nilai (opsional, untuk koreksi)
+    // Hapus nilai
     Route::delete('/hrd/pelatihan/{pelatihan}/sertifikasi/{sertifikasi}', [PelatihanController::class, 'hapusSertifikasi'])->name('pelatihan.sertifikasi.hapus');
 });
 
+// --- Shift Tim (Kepala Bagian) ---
 Route::middleware(['auth', 'role:karyawan,hrd', 'kepala.bagian'])->group(function () {
     Route::get('/shift-tim', [ShiftTimController::class, 'index'])->name('shift-tim.index');
     Route::post('/shift-tim', [ShiftTimController::class, 'store'])->name('shift-tim.store');
     Route::post('/shift-tim/tukar', [ShiftTimController::class, 'tukar'])->name('shift-tim.tukar');
 });
 
-// --- Lembur sisi karyawan & payroll ---
+// --- Lembur & Pelatihan Karyawan ---
 Route::middleware(['auth', 'role:karyawan,hrd'])->group(function () {
     Route::get('/lembur-karyawan', [LemburKaryawanController::class, 'index'])->name('lembur.karyawan');
     Route::post('/lembur-karyawan', [LemburKaryawanController::class, 'store'])->name('lembur.karyawan.store');
     Route::delete('/lembur-karyawan/{id}', [LemburKaryawanController::class, 'batal'])->name('lembur.karyawan.batal');
+    
+    // ⬇️ ROUTE PELATIHAN KARYAWAN ⬇️
     Route::get('/pelatihan-saya', [App\Http\Controllers\PelatihanKaryawanController::class, 'index'])->name('pelatihan.karyawan');
+    
+    // ⬇️ ROUTE CETAK SERTIFIKAT PER ORANG (DITAMBAHKAN) ⬇️
+    Route::get('/sertifikasi/{sertifikasi}/cetak', [PelatihanController::class, 'cetakSertifikat'])->name('sertifikasi.cetak');
 });
 
+// --- Payroll ---
 Route::middleware(['auth', 'role:karyawan,hrd', 'hak:payroll'])->group(function () {
     Route::get('/lembur-payroll', [LemburPayrollController::class, 'index'])->name('lembur.payroll');
     Route::post('/lembur-payroll/{id}/setujui', [LemburPayrollController::class, 'setujui'])->name('lembur.payroll.setujui');
