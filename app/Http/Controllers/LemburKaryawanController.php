@@ -8,21 +8,13 @@ use Illuminate\Support\Facades\Auth;
 
 class LemburKaryawanController extends Controller
 {
-    /** 
-     * Menampilkan riwayat / jadwal lembur milik karyawan yang login.
-     * (Read-Only: Karyawan tidak bisa mengajukan dari sini)
-     */
+    /** Riwayat + form pengajuan lembur milik karyawan yang login. */
     public function index()
     {
         Carbon::setLocale('id');
 
-        $karyawan = Auth::user()->karyawan;
+        $karyawan = $this->karyawanBolehLembur();
 
-        if (!$karyawan) {
-            return back()->with('error', 'Data karyawan tidak ditemukan.');
-        }
-
-        // Ambil semua data lembur milik karyawan ini
         $riwayat = Lembur::where('karyawan_id', $karyawan->id)
             ->orderByDesc('tanggal')
             ->limit(30)

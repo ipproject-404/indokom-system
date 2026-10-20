@@ -45,17 +45,25 @@
         ];
     }
 
-    if ($karyawanSb && $karyawanSb->boleh_lembur) {
-        array_splice($bagianSb['Aktivitas Saya'], 3, 0, [
-            ['label' => 'Lembur', 'icon' => 'bi-clock-history', 'route' => 'lembur.karyawan', 'aktif' => ['lembur.karyawan']],
-        ]);
-    }
+    // Ganti kondisi boleh_lembur dengan cek kepala bagian untuk menu lembur kepala
+if ($isKepalaSb) {
+    array_splice($bagianSb['Aktivitas Saya'], 3, 0, [
+        ['label' => 'Lembur Tim', 'icon' => 'bi-clock-history', 'route' => 'lembur.kepala', 'aktif' => ['lembur.kepala']],
+    ]);
+}
+
+// Menu lembur saya untuk semua karyawan (hanya lihat)
+// Ganti kondisi boleh_lembur jadi tampil untuk semua
+array_splice($bagianSb['Aktivitas Saya'], 3, 0, [
+    ['label' => 'Lembur Saya', 'icon' => 'bi-clock', 'route' => 'lembur.karyawan', 'aktif' => ['lembur.karyawan']],
+]);
 
     // Menu payroll hanya untuk yang punya hak payroll.
     if ($karyawanSb && $karyawanSb->punyaHak('payroll')) {
     $bagianSb['Payroll'] = [
         ['label' => 'Dashboard Payroll', 'icon' => 'bi-cash-coin',        'route' => 'payroll.index',  'aktif' => ['payroll.index']],
         ['label' => 'Rekap Mingguan',    'icon' => 'bi-table',             'route' => 'payroll.rekap',  'aktif' => ['payroll.rekap']],
+        ['label' => 'Rekap Departemen',  'icon' => 'bi-building',          'route' => 'payroll.rekap.departemen', 'aktif' => ['payroll.rekap.departemen']],
         ['label' => 'Kelola Tarif',      'icon' => 'bi-gear-fill',         'route' => 'payroll.tarif',  'aktif' => ['payroll.tarif']],
         ['label' => 'Acc Lembur',        'icon' => 'bi-file-earmark-check','route' => 'lembur.payroll', 'aktif' => ['lembur.payroll']],
     ];
