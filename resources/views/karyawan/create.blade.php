@@ -100,30 +100,44 @@
                         <textarea name="alamat" rows="2" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none" required>{{ old('alamat') }}</textarea>
                     </div>
 
+                    <!-- BARIS NO HP & STATUS PERNIKAHAN -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">No. Handphone <span class="text-xs text-gray-400">(Hanya Angka)</span></label>
                             <input type="text" name="no_hp" value="{{ old('no_hp') }}" onkeypress="return hanyaAngka(event)" placeholder="Contoh: 08123456789" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none" required>
                         </div>
+                        
+                        <!-- ⬇️ TAMBAHAN: STATUS PERNIKAHAN ⬇️ -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Pendidikan Terakhir</label>
-                            <div class="flex gap-2">
-                                <select name="tingkat_pendidikan" required class="w-32 border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white text-sm">
-                                    <option value="">Jenjang</option>
-                                    <option value="SD" {{ old('tingkat_pendidikan') == 'SD' ? 'selected' : '' }}>SD</option>
-                                    <option value="SMP" {{ old('tingkat_pendidikan') == 'SMP' ? 'selected' : '' }}>SMP</option>
-                                    <option value="SMA/SMK" {{ old('tingkat_pendidikan') == 'SMA/SMK' ? 'selected' : '' }}>SMA/SMK</option>
-                                    <option value="D3" {{ old('tingkat_pendidikan') == 'D3' ? 'selected' : '' }}>D3</option>
-                                    <option value="S1" {{ old('tingkat_pendidikan') == 'S1' ? 'selected' : '' }}>S1</option>
-                                    <option value="S2" {{ old('tingkat_pendidikan') == 'S2' ? 'selected' : '' }}>S2</option>
-                                    <option value="S3" {{ old('tingkat_pendidikan') == 'S3' ? 'selected' : '' }}>S3</option>
-                                </select>
-                                <input type="text" name="nama_sekolah" value="{{ old('nama_sekolah') }}"
-                                       placeholder="Nama Sekolah / Institusi"
-                                       class="flex-1 border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none text-sm">
-                            </div>
-                            <p class="text-[11px] text-gray-400 mt-1"><i class="bi bi-info-circle"></i> Hasil digabung, contoh: <strong>S1-Unila</strong></p>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Status Pernikahan</label>
+                            <select name="status_pernikahan" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white">
+                                <option value="" {{ old('status_pernikahan') == '' ? 'selected' : '' }}>-- Pilih Status --</option>
+                                <option value="belum_menikah" {{ old('status_pernikahan') == 'belum_menikah' ? 'selected' : '' }}>Belum Menikah</option>
+                                <option value="menikah" {{ old('status_pernikahan') == 'menikah' ? 'selected' : '' }}>Menikah</option>
+                                <option value="cerai_hidup" {{ old('status_pernikahan') == 'cerai_hidup' ? 'selected' : '' }}>Cerai Hidup</option>
+                                <option value="cerai_mati" {{ old('status_pernikahan') == 'cerai_mati' ? 'selected' : '' }}>Cerai Mati</option>
+                            </select>
                         </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Pendidikan Terakhir</label>
+                        <div class="flex gap-2">
+                            <select name="tingkat_pendidikan" required class="w-32 border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none bg-white text-sm">
+                                <option value="">Jenjang</option>
+                                <option value="SD" {{ old('tingkat_pendidikan') == 'SD' ? 'selected' : '' }}>SD</option>
+                                <option value="SMP" {{ old('tingkat_pendidikan') == 'SMP' ? 'selected' : '' }}>SMP</option>
+                                <option value="SMA/SMK" {{ old('tingkat_pendidikan') == 'SMA/SMK' ? 'selected' : '' }}>SMA/SMK</option>
+                                <option value="D3" {{ old('tingkat_pendidikan') == 'D3' ? 'selected' : '' }}>D3</option>
+                                <option value="S1" {{ old('tingkat_pendidikan') == 'S1' ? 'selected' : '' }}>S1</option>
+                                <option value="S2" {{ old('tingkat_pendidikan') == 'S2' ? 'selected' : '' }}>S2</option>
+                                <option value="S3" {{ old('tingkat_pendidikan') == 'S3' ? 'selected' : '' }}>S3</option>
+                            </select>
+                            <input type="text" name="nama_sekolah" value="{{ old('nama_sekolah') }}"
+                                   placeholder="Nama Sekolah / Institusi"
+                                   class="flex-1 border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-600 outline-none text-sm">
+                        </div>
+                        <p class="text-[11px] text-gray-400 mt-1"><i class="bi bi-info-circle"></i> Hasil digabung, contoh: <strong>S1-Unila</strong></p>
                     </div>
 
                     <!-- SEKSI 2: DATA KEPEGAWAIAN -->

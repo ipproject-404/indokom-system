@@ -64,6 +64,11 @@ class KaryawanController extends Controller
             $query->where('jenis_kelamin', $request->jenis_kelamin);
         }
 
+        // FILTER STATUS PERNIKAHAN
+        if ($request->filled('status_pernikahan')) {
+            $query->where('status_pernikahan', $request->status_pernikahan);
+        }
+
         // FILTER PENDIDIKAN
         if ($request->filled('pendidikan')) {
             $query->where('pendidikan', 'like', $request->pendidikan . '%');
@@ -133,7 +138,7 @@ class KaryawanController extends Controller
                     $rowspanPT[$i] = 0;
                 }
 
-                // ---- Level 2: Divisi (dalam PT yang sama) ----
+                // ---- Level 2: Divisi ----
                 if ($prev === null
                     || $prev->perusahaan_id != $curPT
                     || ($prev->departemen->divisi_id ?? 0) != $curDiv) {
@@ -149,7 +154,7 @@ class KaryawanController extends Controller
                     $rowspanDiv[$i] = 0;
                 }
 
-                // ---- Level 3: Departemen (dalam PT + Divisi yang sama) ----
+                // ---- Level 3: Departemen ----
                 if ($prev === null
                     || $prev->perusahaan_id != $curPT
                     || ($prev->departemen->divisi_id ?? 0) != $curDiv
@@ -209,6 +214,7 @@ class KaryawanController extends Controller
             $html .= '<th style="' . $styleThBase . '" width="190">Nama Lengkap</th>';
             $html .= '<th style="' . $styleThBase . '" width="140">Tipe Karyawan</th>';
             $html .= '<th style="' . $styleThBase . '" width="80">JK</th>';
+            $html .= '<th style="' . $styleThBase . '" width="120">Status Nikah</th>';
             $html .= '<th style="' . $styleThBase . '" width="120">No HP</th>';
             $html .= '<th style="' . $styleThBase . '" width="200">Pendidikan</th>';
             $html .= '<th style="' . $styleThBase . '" width="100">Tgl Lahir</th>';
@@ -245,21 +251,26 @@ class KaryawanController extends Controller
                     : 'color:#B91C1C; font-weight:bold;';
                 $jkText = $kry->jenis_kelamin === 'L' ? 'L' : 'P';
 
+                // Format Status Pernikahan
+                $statusNikah = $kry->status_pernikahan
+                    ? ucwords(str_replace('_', ' ', $kry->status_pernikahan))
+                    : '-';
+
                 $html .= '<tr>';
 
-                // ⭐ Kolom PT - merge lintas seluruh PT
+                // ⭐ Kolom PT
                 if ($rowspanPT[$i] > 0) {
                     $html .= '<td rowspan="' . $rowspanPT[$i] . '" style="' . $styleTdMerged . $bgTempat . '">'
                            . e($kry->perusahaan->nama_perusahaan ?? '-') . '</td>';
                 }
 
-                // ⭐ Kolom Divisi - merge dalam PT yang sama
+                // ⭐ Kolom Divisi
                 if ($rowspanDiv[$i] > 0) {
                     $html .= '<td rowspan="' . $rowspanDiv[$i] . '" style="' . $styleTdMerged . $bgTempat . '">'
                            . e($kry->departemen->divisi->nama_divisi ?? '-') . '</td>';
                 }
 
-                // ⭐ Kolom Departemen - merge dalam Divisi yang sama
+                // ⭐ Kolom Departemen
                 if ($rowspanDept[$i] > 0) {
                     $html .= '<td rowspan="' . $rowspanDept[$i] . '" style="' . $styleTdMerged . $bgTempat . '">'
                            . e($kry->departemen->nama_departemen ?? '-') . '</td>';
@@ -275,6 +286,7 @@ class KaryawanController extends Controller
                 $html .= '<td style="' . $styleTdBase . $bgIdentitas . '">' . e($kry->nama_lengkap ?? '-') . '</td>';
                 $html .= '<td style="' . $styleTdBase . $bgKepeg . '">'     . e($kry->tipeKaryawan->nama ?? '-') . '</td>';
                 $html .= '<td style="' . $styleTdBase . $bgKepeg . ' text-align:center;">' . $jkText . '</td>';
+                $html .= '<td style="' . $styleTdBase . $bgPribadi . ' text-align:center;">' . $statusNikah . '</td>';
                 $html .= '<td style="' . $styleTdBase . $bgKepeg . $styleTextFormat . ' text-align:center;">' . e($kry->no_hp ?? '-') . '</td>';
                 $html .= '<td style="' . $styleTdBase . $bgKepeg . '">'     . e($kry->pendidikan ?? '-') . '</td>';
                 $html .= '<td style="' . $styleTdBase . $bgPribadi . ' text-align:center;">' . $tglLahir . '</td>';
@@ -348,6 +360,9 @@ class KaryawanController extends Controller
             'pakai_jadwal_shift' => 'nullable|boolean',
 
             'tanggal_masuk' => 'required|date',
+
+            // ⬇️ VALIDASI STATUS PERNIKAHAN
+            'status_pernikahan' => 'nullable|in:belum_menikah,menikah,cerai_hidup,cerai_mati',
         ]);
 
         $tipe = TipeKaryawan::find($request->tipe_karyawan_id);
@@ -372,6 +387,9 @@ class KaryawanController extends Controller
             'alamat' => $request->alamat,
             'no_hp' => $request->no_hp,
             'pendidikan' => $pendidikanGabung,
+
+            // ⬇️ SIMPAN STATUS PERNIKAHAN (langsung, biar bisa null juga)
+            'status_pernikahan' => $request->status_pernikahan,
 
             'perusahaan_id'    => $request->perusahaan_id,
             'tipe_karyawan_id' => $request->tipe_karyawan_id,
@@ -448,25 +466,28 @@ class KaryawanController extends Controller
         $karyawan = Karyawan::findOrFail($id);
 
         $request->validate([
-            'nik_ktp' => 'required|digits:16|unique:karyawan,nik_ktp,' . $id,
-            'nik_kerja' => 'required|unique:karyawan,nik_kerja,' . $id,
-            'nama_lengkap' => 'required',
-            'tempat_lahir' => 'required',
-            'tanggal_lahir' => 'required|date',
-            'jenis_kelamin' => 'required',
-            'alamat' => 'required',
-            'no_hp' => 'required|numeric',
+            'nik_ktp'            => 'required|digits:16|unique:karyawan,nik_ktp,' . $id,
+            'nik_kerja'          => 'required|unique:karyawan,nik_kerja,' . $id,
+            'nama_lengkap'       => 'required',
+            'tempat_lahir'       => 'required',
+            'tanggal_lahir'      => 'required|date',
+            'jenis_kelamin'      => 'required',
+            'alamat'             => 'required',
+            'no_hp'              => 'required|numeric',
             'tingkat_pendidikan' => 'nullable',
-            'nama_sekolah' => 'nullable|string|max:255',
-            'perusahaan_id' => 'required|exists:perusahaan,id',
-            'tipe_karyawan_id' => 'required|exists:tipe_karyawan,id',
-            'departemen_id' => 'required|exists:departemen,id',
-            'jabatan_id' => 'required|exists:jabatan,id',
-            'shift_id' => 'nullable|exists:shift,id',
-            'tanggal_masuk' => 'required|date',
-            'tanggal_keluar' => 'nullable|date',
-            'status' => 'required|in:aktif,nonaktif',
+            'nama_sekolah'       => 'nullable|string|max:255',
+            'perusahaan_id'      => 'required|exists:perusahaan,id',
+            'tipe_karyawan_id'   => 'required|exists:tipe_karyawan,id',
+            'departemen_id'      => 'required|exists:departemen,id',
+            'jabatan_id'         => 'required|exists:jabatan,id',
+            'shift_id'           => 'nullable|exists:shift,id',
+            'tanggal_masuk'      => 'required|date',
+            'tanggal_keluar'     => 'nullable|date',
+            'status'             => 'required|in:aktif,nonaktif',
             'pakai_jadwal_shift' => 'nullable|boolean',
+
+            // ⬇️ VALIDASI STATUS PERNIKAHAN
+            'status_pernikahan'  => 'nullable|in:belum_menikah,menikah,cerai_hidup,cerai_mati',
         ]);
 
         $tipe = TipeKaryawan::find($request->tipe_karyawan_id);
@@ -494,6 +515,10 @@ class KaryawanController extends Controller
             'alamat' => $request->alamat,
             'no_hp' => $request->no_hp,
             'pendidikan' => $pendidikanGabung,
+
+            // ⬇️ SIMPAN STATUS PERNIKAHAN (langsung, agar bisa dikosongkan)
+            'status_pernikahan' => $request->status_pernikahan,
+
             'perusahaan_id' => $request->perusahaan_id,
             'tipe_karyawan_id' => $request->tipe_karyawan_id,
             'departemen_id' => $request->departemen_id,

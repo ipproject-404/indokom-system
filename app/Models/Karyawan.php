@@ -18,6 +18,7 @@ class Karyawan extends Model
         'jenis_kelamin',
         'alamat',
         'no_hp',
+        'status_pernikahan',   // ⬅️⬅️⬅️ TAMBAHKAN BARIS INI
         'pendidikan',
         'jabatan_id',
         'departemen_id',
@@ -32,6 +33,9 @@ class Karyawan extends Model
 
     protected $casts = [
         'pakai_jadwal_shift' => 'boolean',
+        'tanggal_lahir'      => 'date',      // opsional (biar auto Carbon)
+        'tanggal_masuk'      => 'date',      // opsional
+        'tanggal_keluar'     => 'date',      // opsional
     ];
 
     public function jabatan()
@@ -137,7 +141,7 @@ class Karyawan extends Model
     {
         return $this->hakAkses()->where('hak', $hak)->exists();
     }
-    
+
     public function pelatihanDiikuti()
     {
         return $this->hasMany(PesertaPelatihan::class);

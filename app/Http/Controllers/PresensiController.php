@@ -77,6 +77,11 @@ class PresensiController extends Controller
                 $q->where('nama_jabatan', $request->jabatan);
             });
         }
+        
+        // ⬇️ FILTER STATUS PERNIKAHAN (BARU) ⬇️
+        if ($request->filled('status_pernikahan')) {
+            $karyawansQuery->where('status_pernikahan', $request->status_pernikahan);
+        }
 
         $karyawans = $karyawansQuery->orderBy('nama_lengkap', 'asc')->paginate(10)->withQueryString();
 
@@ -115,9 +120,7 @@ class PresensiController extends Controller
         ));
     }
 
-    /**
-     * Simpan status kehadiran manual (single hari)
-     */
+    // ... (Method simpanStatusManual, simpanIzinMultiHari, hapusStatusManual, exportExcel tetap sama) ...
     public function simpanStatusManual(Request $request)
     {
         $request->validate([
@@ -132,17 +135,11 @@ class PresensiController extends Controller
             ->first();
 
         if ($existing && $existing->jam_masuk && in_array($existing->metode_presensi, ['QR_KARYAWAN', 'QR_ADMIN'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Karyawan ini sudah absen masuk via QR. Tidak bisa diubah ke status manual.',
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Sudah absen via QR.'], 422);
         }
 
         $presensi = Presensi::updateOrCreate(
-            [
-                'karyawan_id' => $request->karyawan_id,
-                'tanggal'     => $request->tanggal,
-            ],
+            ['karyawan_id' => $request->karyawan_id, 'tanggal' => $request->tanggal],
             [
                 'metode_presensi'   => 'MANUAL_HRD',
                 'status_verifikasi' => 'disetujui',
@@ -154,15 +151,9 @@ class PresensiController extends Controller
             ]
         );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Status kehadiran berhasil disimpan.',
-        ]);
+        return response()->json(['success' => true, 'message' => 'Status kehadiran berhasil disimpan.']);
     }
 
-    /**
-     * Simpan izin/cuti multi-hari (bulk)
-     */
     public function simpanIzinMultiHari(Request $request)
     {
         $request->validate([
@@ -177,10 +168,7 @@ class PresensiController extends Controller
         $end   = Carbon::parse($request->tanggal_selesai);
 
         if ($start->diffInDays($end) > 30) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Maksimal 30 hari dalam sekali input.',
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Maksimal 30 hari.'], 422);
         }
 
         $bentrok = Presensi::where('karyawan_id', $request->karyawan_id)
@@ -190,19 +178,13 @@ class PresensiController extends Controller
             ->exists();
 
         if ($bentrok) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ada tanggal yang sudah absen QR di rentang ini.',
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Ada tanggal yang sudah absen QR.'], 422);
         }
 
         $jumlah = 0;
         for ($tgl = $start->copy(); $tgl->lte($end); $tgl->addDay()) {
             Presensi::updateOrCreate(
-                [
-                    'karyawan_id' => $request->karyawan_id,
-                    'tanggal'     => $tgl->toDateString(),
-                ],
+                ['karyawan_id' => $request->karyawan_id, 'tanggal' => $tgl->toDateString()],
                 [
                     'metode_presensi'   => 'MANUAL_HRD',
                     'status_verifikasi' => 'disetujui',
@@ -215,15 +197,9 @@ class PresensiController extends Controller
             $jumlah++;
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => "Berhasil input {$jumlah} hari untuk karyawan ini.",
-        ]);
+        return response()->json(['success' => true, 'message' => "Berhasil input {$jumlah} hari."]);
     }
 
-    /**
-     * Hapus status kehadiran manual
-     */
     public function hapusStatusManual(Request $request)
     {
         $request->validate([
@@ -237,31 +213,18 @@ class PresensiController extends Controller
             ->first();
 
         if (!$presensi) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Data tidak ditemukan atau bukan input manual.',
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'Data tidak ditemukan.'], 404);
         }
 
         $presensi->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Status kehadiran berhasil dihapus.',
-        ]);
+        return response()->json(['success' => true, 'message' => 'Status kehadiran berhasil dihapus.']);
     }
 
-    /**
-     * Export Laporan Rinci 1 Karyawan ke Excel
-     */
     public function exportExcel(Request $request)
     {
         Carbon::setLocale('id');
-
         $karyawan_id = $request->input('karyawan_id');
-        if (!$karyawan_id) {
-            return back()->with('error', 'Pilih karyawan terlebih dahulu.');
-        }
+        if (!$karyawan_id) return back()->with('error', 'Pilih karyawan terlebih dahulu.');
 
         $karyawan = Karyawan::with(['departemen.divisi', 'jabatan', 'perusahaan', 'shift', 'tipeKaryawan'])
             ->findOrFail($karyawan_id);
@@ -279,8 +242,7 @@ class PresensiController extends Controller
         $presensi = Presensi::with('shift')
             ->where('karyawan_id', $karyawan_id)
             ->whereBetween('tanggal', [$startDate, $endDate])
-            ->get()
-            ->keyBy('tanggal');
+            ->get()->keyBy('tanggal');
 
         $lembur = collect();
         if (class_exists('\App\Models\Lembur')) {
@@ -288,18 +250,13 @@ class PresensiController extends Controller
                 $lembur = \App\Models\Lembur::where('karyawan_id', $karyawan_id)
                     ->whereBetween('tanggal', [$startDate, $endDate])
                     ->where('status', 'disetujui')
-                    ->get()
-                    ->keyBy('tanggal');
-            } catch (\Exception $e) {
-                $lembur = collect();
-            }
+                    ->get()->keyBy('tanggal');
+            } catch (\Exception $e) { $lembur = collect(); }
         }
 
         $html = $this->buildLaporanRinciHtml($karyawan, $presensi, $lembur, $startDate, $endDate);
-
         $namaFile = preg_replace('/[\\\\\/\?\*\[\]:\|<>"]/', '', $karyawan->nama_lengkap);
         $namaFile = trim(str_replace(' ', '_', $namaFile));
-
         $fileName = 'Laporan_Rinci_' . $namaFile . '_' . $startDate . '_sd_' . $endDate . '.xls';
 
         return response("\xEF\xBB\xBF" . $html, 200, [
@@ -309,9 +266,6 @@ class PresensiController extends Controller
         ]);
     }
 
-    /**
-     * Export Matriks Kehadiran Massal (Semua Karyawan Terpilih / Sesuai Filter)
-     */
     public function exportExcelMassal(Request $request)
     {
         Carbon::setLocale('id');
@@ -343,29 +297,24 @@ class PresensiController extends Controller
             if ($request->filled('jabatan')) {
                 $query->whereHas('jabatan', fn($q) => $q->where('nama_jabatan', $request->jabatan));
             }
+            // ⬇️ FILTER STATUS PERNIKAHAN UNTUK EXCEL (BARU) ⬇️
+            if ($request->filled('status_pernikahan')) {
+                $query->where('status_pernikahan', $request->status_pernikahan);
+            }
         }
 
-        // Urutkan berdasarkan Perusahaan, lalu Departemen
         $karyawans = $query->orderBy('perusahaan_id')->orderBy('departemen_id')->orderBy('nama_lengkap')->get();
         $karyawanIds = $karyawans->pluck('id');
 
         $period = CarbonPeriod::create($startDate, $endDate);
         $dates = [];
-        foreach ($period as $date) {
-            $dates[] = $date->toDateString();
-        }
+        foreach ($period as $date) { $dates[] = $date->toDateString(); }
 
         $presensiData = Presensi::whereIn('karyawan_id', $karyawanIds)
             ->whereBetween('tanggal', [$startDate, $endDate])
             ->get()
-            ->groupBy([
-                'karyawan_id',
-                function ($item) {
-                    return Carbon::parse($item->tanggal)->toDateString();
-                }
-            ]);
+            ->groupBy(['karyawan_id', function ($item) { return Carbon::parse($item->tanggal)->toDateString(); }]);
 
-        // Group by Perusahaan, lalu Departemen untuk Merge Rowspan
         $groupedKaryawans = $karyawans->groupBy(function($k) {
             return $k->perusahaan->nama_perusahaan ?? 'Tanpa PT';
         })->map(function($items) {
@@ -376,15 +325,11 @@ class PresensiController extends Controller
 
         $fileName = 'Matrix_Kehadiran_' . $startDate . '_sd_' . $endDate . '.xls';
 
-        // Styling Header
         $thStyle = 'border:1px solid #475569; padding:8px 4px; background-color:#1E293B; color:#FFFFFF; font-weight:bold; text-align:center; font-family:Arial; font-size:9pt; vertical-align:middle;';
         $thWeekend = 'border:1px solid #475569; padding:8px 4px; background-color:#991B1B; color:#FFFFFF; font-weight:bold; text-align:center; font-family:Arial; font-size:9pt; vertical-align:middle;';
-        
-        // Styling Body Dasar
         $tdBase = 'border:1px solid #CBD5E1; padding:4px 6px; font-family:Arial; font-size:9pt; text-align:center; vertical-align:middle;';
         $tdName = 'border:1px solid #CBD5E1; padding:4px 6px; font-family:Arial; font-size:9pt; text-align:left; vertical-align:middle; background-color:#FFFFFF;';
         
-        // Warna Status
         $bgHadir = 'background-color:#D1FAE5; color:#065F46; font-weight:bold;';
         $bgSakit = 'background-color:#DBEAFE; color:#1E40AF; font-weight:bold;';
         $bgIzin  = 'background-color:#FEF3C7; color:#B45309; font-weight:bold;';
@@ -425,6 +370,9 @@ class PresensiController extends Controller
                 <th style="<?= $thStyle ?> width:80px;">NIK</th>
                 <th style="<?= $thStyle ?> width:150px;">PT</th>
                 <th style="<?= $thStyle ?> width:150px;">Departemen</th>
+                <!-- ⬇️ KOLOM BARU: STATUS NIKAH ⬇️ -->
+                <th style="<?= $thStyle ?> width:120px;">Status Nikah</th>
+                
                 <?php foreach ($dates as $date): ?>
                     <?php $isWeekend = Carbon::parse($date)->isSunday(); ?>
                     <th style="<?= $isWeekend ? $thWeekend : $thStyle ?>">
@@ -438,7 +386,6 @@ class PresensiController extends Controller
             <?php $no = 1; ?>
             <?php foreach ($groupedKaryawans as $ptName => $departemens): ?>
                 <?php 
-                    // Hitung total karyawan di PT ini untuk Rowspan PT
                     $totalKaryawanPT = $departemens->flatten()->count();
                     $isFirstPT = true;
                 ?>
@@ -466,6 +413,9 @@ class PresensiController extends Controller
                                     <?= e($deptName) ?>
                                 </td>
                             <?php endif; ?>
+
+                            <!-- ⬇️ DATA BARU: STATUS NIKAH ⬇️ -->
+                            <td style="<?= $tdBase ?>"><?= e(ucwords(str_replace('_', ' ', $k->status_pernikahan ?? '-'))) ?></td>
                             
                             <!-- Hari -->
                             <?php foreach ($dates as $date): ?>
@@ -488,7 +438,7 @@ class PresensiController extends Controller
                                     
                                     $isSunday = Carbon::parse($date)->isSunday();
                                     $teks = '-';
-                                    $styleTd = $tdBase . ' background-color:#FFFFFF;'; // Default putih
+                                    $styleTd = $tdBase . ' background-color:#FFFFFF;';
                                     
                                     if ($statusManual) {
                                         if ($statusManual == 'sakit') { $teks = 'S'; $styleTd = $tdBase . $bgSakit; }
@@ -506,7 +456,7 @@ class PresensiController extends Controller
                                         $teks = 'L';
                                         $styleTd = $tdBase . $bgLibur;
                                     } else {
-                                        if ($isSunday) $styleTd = $tdBase . ' background-color:#FEF2F2;'; // Merah pudar jika minggu kosong
+                                        if ($isSunday) $styleTd = $tdBase . ' background-color:#FEF2F2;';
                                     }
                                 ?>
                                 <td style="<?= $styleTd ?> font-size:8.5pt;"><?= $teks ?></td>
@@ -543,9 +493,6 @@ class PresensiController extends Controller
         ]);
     }
 
-    /**
-     * Build HTML untuk Laporan Rinci 1 karyawan (di-export ke Excel)
-     */
     private function buildLaporanRinciHtml($karyawan, $presensi, $lembur, $startDate, $endDate)
     {
         $periode = Carbon::parse($startDate)->translatedFormat('d-M-Y')
@@ -589,6 +536,13 @@ class PresensiController extends Controller
         $html .= '<td style="' . $tdInfo . '">' . e($karyawan->departemen->nama_departemen ?? '-') . '</td>';
         $html .= '<td style="' . $thInfo . '">JABATAN</td>';
         $html .= '<td style="' . $tdInfo . '">' . e($karyawan->jabatan->nama_jabatan ?? '-') . '</td>';
+        $html .= '</tr>';
+        // ⬇️ DATA BARU: STATUS NIKAH DI LAPORAN RINCI ⬇️
+        $html .= '<tr>';
+        $html .= '<td style="' . $thInfo . '">STATUS NIKAH</td>';
+        $html .= '<td style="' . $tdInfo . '">' . e(ucwords(str_replace('_', ' ', $karyawan->status_pernikahan ?? '-'))) . '</td>';
+        $html .= '<td style="' . $thInfo . '">PERUSAHAAN</td>';
+        $html .= '<td style="' . $tdInfo . '">' . e($karyawan->perusahaan->nama_perusahaan ?? '-') . '</td>';
         $html .= '</tr>';
 
         $html .= '<tr>';

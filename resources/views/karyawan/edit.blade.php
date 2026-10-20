@@ -114,7 +114,8 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Tanggal Lahir <span class="text-rose-500">*</span></label>
-                                <input type="date" name="tanggal_lahir" value="{{ old('tanggal_lahir', $karyawan->tanggal_lahir) }}" 
+                                <!-- ⬇️ PERBAIKAN FORMAT TANGGAL LAHIR ⬇️ -->
+                                <input type="date" name="tanggal_lahir" value="{{ old('tanggal_lahir', $karyawan->tanggal_lahir ? \Carbon\Carbon::parse($karyawan->tanggal_lahir)->format('Y-m-d') : '') }}" 
                                        class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none" required>
                                 @if($karyawan->tanggal_lahir)
                                     <p class="text-[11px] text-blue-600 mt-1">
@@ -129,6 +130,7 @@
                             <textarea name="alamat" rows="2" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none" required>{{ old('alamat', $karyawan->alamat) }}</textarea>
                         </div>
 
+                        <!-- BARIS NO HP & STATUS PERNIKAHAN -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1.5">No. Handphone <span class="text-rose-500">*</span></label>
@@ -136,24 +138,36 @@
                                        onkeypress="return hanyaAngka(event)"
                                        class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none" required>
                             </div>
+                            
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Pendidikan Terakhir</label>
-                                @php
-                                    $pendParts = explode('-', $karyawan->pendidikan ?? '', 2);
-                                    $oldTingkat = $pendParts[0] ?? '';
-                                    $oldSekolah = $pendParts[1] ?? '';
-                                @endphp
-                                <div class="flex gap-2">
-                                    <select name="tingkat_pendidikan" class="w-32 border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
-                                        <option value="">Jenjang</option>
-                                        @foreach(['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2', 'S3'] as $opsi)
-                                            <option value="{{ $opsi }}" {{ old('tingkat_pendidikan', $oldTingkat) == $opsi ? 'selected' : '' }}>{{ $opsi }}</option>
-                                        @endforeach
-                                    </select>
-                                    <input type="text" name="nama_sekolah" value="{{ old('nama_sekolah', $oldSekolah) }}" 
-                                           placeholder="Nama Sekolah / Institusi"
-                                           class="flex-1 border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
-                                </div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Status Pernikahan</label>
+                                <select name="status_pernikahan" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+                                    <option value="" {{ old('status_pernikahan', $karyawan->status_pernikahan) == '' ? 'selected' : '' }}>-- Pilih Status --</option>
+                                    <option value="belum_menikah" {{ old('status_pernikahan', $karyawan->status_pernikahan) == 'belum_menikah' ? 'selected' : '' }}>Belum Menikah</option>
+                                    <option value="menikah" {{ old('status_pernikahan', $karyawan->status_pernikahan) == 'menikah' ? 'selected' : '' }}>Menikah</option>
+                                    <option value="cerai_hidup" {{ old('status_pernikahan', $karyawan->status_pernikahan) == 'cerai_hidup' ? 'selected' : '' }}>Cerai Hidup</option>
+                                    <option value="cerai_mati" {{ old('status_pernikahan', $karyawan->status_pernikahan) == 'cerai_mati' ? 'selected' : '' }}>Cerai Mati</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Pendidikan Terakhir</label>
+                            @php
+                                $pendParts = explode('-', $karyawan->pendidikan ?? '', 2);
+                                $oldTingkat = $pendParts[0] ?? '';
+                                $oldSekolah = $pendParts[1] ?? '';
+                            @endphp
+                            <div class="flex gap-2">
+                                <select name="tingkat_pendidikan" class="w-32 border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+                                    <option value="">Jenjang</option>
+                                    @foreach(['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2', 'S3'] as $opsi)
+                                        <option value="{{ $opsi }}" {{ old('tingkat_pendidikan', $oldTingkat) == $opsi ? 'selected' : '' }}>{{ $opsi }}</option>
+                                    @endforeach
+                                </select>
+                                <input type="text" name="nama_sekolah" value="{{ old('nama_sekolah', $oldSekolah) }}" 
+                                       placeholder="Nama Sekolah / Institusi"
+                                       class="flex-1 border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
                             </div>
                         </div>
                     </div>
@@ -238,7 +252,7 @@
                             </div>
                         </div>
 
-                                                <div id="box-shift-tetap" class="mt-4">
+                        <div id="box-shift-tetap" class="mt-4">
                             <label class="block text-sm font-medium text-gray-700 mb-1.5">Shift Tetap</label>
                             <select name="shift_id" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
                                 <option value="">Tanpa shift (borongan)</option>
@@ -250,7 +264,8 @@
                             </select>
                             <p class="text-[11px] text-gray-400 mt-1"><i class="bi bi-info-circle"></i> Wajib untuk karyawan bulanan yang tidak memakai jadwal bergilir.</p>
                         </div>
-                                                <div class="mt-4 flex items-start gap-3 bg-indigo-50/50 border border-indigo-100 rounded-lg p-3">
+                        
+                        <div class="mt-4 flex items-start gap-3 bg-indigo-50/50 border border-indigo-100 rounded-lg p-3">
                             <input type="hidden" name="pakai_jadwal_shift" value="0">
                             <input type="checkbox" id="pakai_jadwal_shift" name="pakai_jadwal_shift" value="1"
                                    class="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded"
@@ -281,7 +296,8 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1.5">
                                     Tanggal Masuk <span class="text-rose-500">*</span>
                                 </label>
-                                <input type="date" name="tanggal_masuk" value="{{ old('tanggal_masuk', $karyawan->tanggal_masuk) }}" 
+                                <!-- ⬇️ PERBAIKAN FORMAT TANGGAL MASUK ⬇️ -->
+                                <input type="date" name="tanggal_masuk" value="{{ old('tanggal_masuk', $karyawan->tanggal_masuk ? \Carbon\Carbon::parse($karyawan->tanggal_masuk)->format('Y-m-d') : '') }}" 
                                        class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none" required>
                                 @if($karyawan->tanggal_masuk)
                                     <p class="text-[11px] text-emerald-600 mt-1 font-medium">
@@ -294,7 +310,8 @@
                                     Tanggal Keluar
                                     <span class="text-xs text-gray-400 font-normal">(opsional — diisi jika resign/PHK)</span>
                                 </label>
-                                <input type="date" name="tanggal_keluar" value="{{ old('tanggal_keluar', $karyawan->tanggal_keluar) }}" 
+                                <!-- ⬇️ PERBAIKAN FORMAT TANGGAL KELUAR ⬇️ -->
+                                <input type="date" name="tanggal_keluar" value="{{ old('tanggal_keluar', $karyawan->tanggal_keluar ? \Carbon\Carbon::parse($karyawan->tanggal_keluar)->format('Y-m-d') : '') }}" 
                                        class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                                 <p class="text-[11px] text-amber-600 mt-1">
                                     <i class="bi bi-info-circle"></i> Isi jika karyawan sudah tidak aktif. Kosongkan jika masih bekerja.
@@ -505,7 +522,7 @@
         }
     });
 
-        // Shift tetap disembunyikan kalau pakai jadwal bergilir (tetap ikut terkirim).
+    // Shift tetap disembunyikan kalau pakai jadwal bergilir (tetap ikut terkirim).
     function toggleShiftTetap() {
         var cek = document.getElementById('pakai_jadwal_shift');
         var box = document.getElementById('box-shift-tetap');

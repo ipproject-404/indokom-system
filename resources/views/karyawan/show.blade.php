@@ -289,6 +289,16 @@
                                     <i class="bi bi-telephone-fill text-emerald-500"></i> {{ $karyawan->no_hp ?? '-' }}
                                 </p>
                             </div>
+                            
+                            <!-- ⬇️ TAMBAHAN: STATUS PERNIKAHAN ⬇️ -->
+                            <div class="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Status Pernikahan</p>
+                                <p class="font-bold text-slate-800 text-sm">
+                                    <i class="bi bi-heart-fill text-rose-500"></i> 
+                                    {{ $karyawan->status_pernikahan ? ucwords(str_replace('_', ' ', $karyawan->status_pernikahan)) : '-' }}
+                                </p>
+                            </div>
+                            
                             <div class="bg-slate-50 rounded-lg p-3 border border-slate-100">
                                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Pendidikan</p>
                                 <p class="font-bold text-slate-800 text-sm">

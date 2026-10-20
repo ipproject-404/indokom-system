@@ -213,6 +213,16 @@
                             @endforeach
                         </select>
 
+                        <!-- ⬇️ FILTER STATUS PERNIKAHAN (BARU) ⬇️ -->
+                        <select name="status_pernikahan" onchange="document.getElementById('filterForm').submit()"
+                                class="filter-select px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer max-w-[160px]">
+                            <option value="">💍 Status Nikah</option>
+                            <option value="belum_menikah" {{ request('status_pernikahan') == 'belum_menikah' ? 'selected' : '' }}>Belum Menikah</option>
+                            <option value="menikah" {{ request('status_pernikahan') == 'menikah' ? 'selected' : '' }}>Menikah</option>
+                            <option value="cerai_hidup" {{ request('status_pernikahan') == 'cerai_hidup' ? 'selected' : '' }}>Cerai Hidup</option>
+                            <option value="cerai_mati" {{ request('status_pernikahan') == 'cerai_mati' ? 'selected' : '' }}>Cerai Mati</option>
+                        </select>
+
                         <a href="{{ route('kehadiran.log') }}" class="text-[10px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-2 rounded-lg transition-colors border border-rose-200 flex items-center gap-1">
                             <i class="bi bi-x-circle"></i> Clear
                         </a>
@@ -291,7 +301,12 @@
 
                                 <td class="sticky-col-name group-hover:bg-slate-100 border-r-2 border-gray-300 px-5 py-3 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                     <div class="font-bold text-gray-900 truncate" title="{{ $karyawan->nama_lengkap }}">{{ $karyawan->nama_lengkap }}</div>
-                                    <div class="text-xs text-gray-500 mt-0.5 font-medium truncate">{{ $karyawan->nik_kerja }} &bull; {{ $karyawan->departemen->nama_departemen ?? '-' }}</div>
+                                    <div class="text-xs text-gray-500 mt-0.5 font-medium truncate">
+                                        {{ $karyawan->nik_kerja }} &bull; {{ $karyawan->departemen->nama_departemen ?? '-' }}
+                                        @if($karyawan->status_pernikahan)
+                                            &bull; <span class="capitalize text-[10px] bg-gray-200 px-1 rounded">{{ str_replace('_', ' ', $karyawan->status_pernikahan) }}</span>
+                                        @endif
+                                    </div>
                                 </td>
 
                                 @foreach($dates as $date)
