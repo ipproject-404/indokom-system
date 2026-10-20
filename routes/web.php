@@ -108,6 +108,9 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::post('/hrd/pelatihan/{pelatihan}/peserta', [PelatihanController::class, 'tambahPeserta'])->name('pelatihan.peserta.tambah');
     Route::delete('/hrd/pelatihan/{pelatihan}/peserta/{karyawan}', [PelatihanController::class, 'hapusPeserta'])->name('pelatihan.peserta.hapus');
 
+    // ⬇️ ROUTE ABSEN HADIR OLEH HRD ⬇️
+    Route::post('/hrd/pelatihan/peserta/{peserta}/hadir', [PelatihanController::class, 'tandaiHadir'])->name('pelatihan.peserta.hadir');
+
     // Nilai
     Route::post('/hrd/pelatihan/{pelatihan}/nilai', [PelatihanController::class, 'simpanNilaiBulk'])->name('pelatihan.nilai.simpan');
 
@@ -137,6 +140,9 @@ Route::middleware(['auth', 'role:karyawan,hrd'])->group(function () {
     // ⬇️ ROUTE PELATIHAN KARYAWAN ⬇️
     Route::get('/pelatihan-saya', [App\Http\Controllers\PelatihanKaryawanController::class, 'index'])->name('pelatihan.karyawan');
     
+    // ⬇️ ROUTE ABSEN HADIR OLEH KARYAWAN ⬇️
+    Route::post('/pelatihan-saya/peserta/{peserta}/hadir', [App\Http\Controllers\PelatihanKaryawanController::class, 'tandaiHadir'])->name('pelatihan.karyawan.hadir');
+
     // ⬇️ ROUTE CETAK SERTIFIKAT PER ORANG ⬇️
     Route::get('/sertifikasi/{sertifikasi}/cetak', [PelatihanController::class, 'cetakSertifikat'])->name('sertifikasi.cetak');
 });

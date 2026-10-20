@@ -47,6 +47,13 @@
     </div>
 
     <div class="p-3">
+        @if(session('success'))
+            <div class="alert alert-success py-2 px-3 mb-3" style="font-size:.82rem; border-radius:12px;">{{ session('success') }}</div>
+        @endif
+        @if(session('error'))
+            <div class="alert alert-danger py-2 px-3 mb-3" style="font-size:.82rem; border-radius:12px;">{{ session('error') }}</div>
+        @endif
+
         @forelse($peserta as $p)
             @php
                 $pel = $p->pelatihan;
@@ -76,6 +83,24 @@
                         - {{ $pel->tanggal_selesai->translatedFormat('d M Y') }}
                     @endif
                 </div>
+
+                {{-- ⬇️ TOMBOL ABSEN HADIR MOBILE ⬇️ --}}
+                @if($pel->status === 'aktif' && $pel->sedangBerjalan())
+                    <div class="mb-3">
+                        @if($p->status_kehadiran === 'hadir')
+                            <div class="alert alert-success py-2 mb-0 small fw-bold border-0">
+                                <i class="bi bi-check-circle-fill me-1"></i> Hadir ({{ \Carbon\Carbon::parse($p->waktu_hadir)->format('H:i') }})
+                            </div>
+                        @else
+                            <form method="POST" action="{{ route('pelatihan.karyawan.hadir', $p->id) }}">
+                                @csrf
+                                <button type="submit" class="btn w-100 fw-bold text-dark border-0 shadow-sm" style="background-color: #f59e0b;">
+                                    <i class="bi bi-fingerprint me-1"></i> Klik Hadir Sekarang
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                @endif
                 
                 @if($sertif && $sertif->nilai_postest !== null)
                     <div class="bg-light rounded p-2 mb-2 d-flex justify-content-between small">
@@ -118,6 +143,19 @@
             <div class="date-pill"><i class="bi bi-award me-1"></i> {{ $peserta->count() }} Pelatihan</div>
         </div>
 
+        @if(session('success'))
+            <div class="alert alert-success d-flex align-items-center shadow-sm border-0 mb-3 rounded-3 small">
+                <i class="bi bi-check-circle-fill fs-5 me-2"></i>
+                <div>{{ session('success') }}</div>
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="alert alert-danger d-flex align-items-center shadow-sm border-0 mb-3 rounded-3 small">
+                <i class="bi bi-x-circle-fill fs-5 me-2"></i>
+                <div>{{ session('error') }}</div>
+            </div>
+        @endif
+
         <div class="row g-3">
             @forelse($peserta as $p)
                 @php
@@ -150,6 +188,24 @@
                             @endif
                             &bull; <i class="bi bi-building"></i> {{ $pel->penyelenggara ?? 'Internal' }}
                         </div>
+
+                        {{-- ⬇️ TOMBOL ABSEN HADIR DESKTOP ⬇️ --}}
+                        @if($pel->status === 'aktif' && $pel->sedangBerjalan())
+                            <div class="mb-3">
+                                @if($p->status_kehadiran === 'hadir')
+                                    <div class="alert alert-success py-2 mb-0 small fw-bold border-0">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Anda sudah tercatat Hadir ({{ \Carbon\Carbon::parse($p->waktu_hadir)->format('H:i') }})
+                                    </div>
+                                @else
+                                    <form method="POST" action="{{ route('pelatihan.karyawan.hadir', $p->id) }}">
+                                        @csrf
+                                        <button type="submit" class="btn w-100 fw-bold text-dark border-0 shadow-sm" style="background-color: #f59e0b;">
+                                            <i class="bi bi-fingerprint me-1"></i> Klik Hadir Sekarang
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                        @endif
 
                         @if($sertif && $sertif->nilai_postest !== null)
                             <div class="d-flex justify-content-between bg-light rounded p-2 mb-3 text-center">

@@ -156,6 +156,24 @@ class PelatihanController extends Controller
     }
 
     // ================================================================
+    // TANDAI HADIR PESERTA (Oleh HRD)
+    // ================================================================
+    public function tandaiHadir(PesertaPelatihan $peserta)
+    {
+        // ⬇️ PERBAIKAN: Izinkan jika status 'aktif' atau 'selesai' ⬇️
+        if (!in_array($peserta->pelatihan->status, ['aktif', 'selesai'])) {
+            return back()->with('error', 'Kehadiran tidak bisa dicatat pada pelatihan yang dibatalkan.');
+        }
+
+        $peserta->update([
+            'status_kehadiran' => 'hadir',
+            'waktu_hadir'      => now(),
+        ]);
+
+        return back()->with('success', "{$peserta->karyawan->nama_lengkap} ditandai Hadir.");
+    }
+
+    // ================================================================
     // HAPUS PESERTA
     // ================================================================
     public function hapusPeserta(Pelatihan $pelatihan, Karyawan $karyawan)
@@ -275,18 +293,14 @@ class PelatihanController extends Controller
     // ================================================================
     public function cetakSertifikat(SertifikasiKaryawan $sertifikasi)
     {
-        // Pastikan yang dicetak adalah yang lulus
         if ($sertifikasi->status !== 'lulus') {
             abort(403, 'Sertifikat hanya tersedia untuk peserta yang lulus.');
         }
 
-        // Load relasi yang dibutuhkan
         $sertifikasi->load(['karyawan.jabatan', 'karyawan.departemen', 'pelatihan']);
         $pelatihan = $sertifikasi->pelatihan;
 
         Carbon::setLocale('id');
-
-        // Bungkus dalam bentuk array/collection (walau isinya 1) agar cocok dengan view 'sertifikat-multiple-pdf'
         $sertifikasis = collect([$sertifikasi]);
 
         $pdf = Pdf::loadView('pelatihan.sertifikat-multiple-pdf', [

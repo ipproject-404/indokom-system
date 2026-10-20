@@ -13,6 +13,13 @@ class PesertaPelatihan extends Model
         'karyawan_id',
         'ditunjuk_oleh',
         'catatan',
+        'status_kehadiran', // ⬅️ TAMBAHKAN INI
+        'waktu_hadir',      // ⬅️ TAMBAHKAN INI
+    ];
+
+    // Opsional: Agar 'waktu_hadir' otomatis dibaca sebagai objek Carbon/Tanggal
+    protected $casts = [
+        'waktu_hadir' => 'datetime',
     ];
 
     public function pelatihan()

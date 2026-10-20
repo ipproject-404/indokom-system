@@ -37,4 +37,30 @@ class PelatihanKaryawanController extends Controller
 
         return view('karyawan.pelatihan', compact('karyawan', 'peserta'));
     }
+
+    // ⬇️ METHOD BARU: Karyawan klik hadir ⬇️
+    public function tandaiHadir(PesertaPelatihan $peserta)
+    {
+        // Pastikan yang klik adalah pemilik data
+        if ($peserta->karyawan_id !== Auth::user()->karyawan->id) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        // Pastikan pelatihan sedang berjalan
+        if ($peserta->pelatihan->status !== 'aktif' || !$peserta->pelatihan->sedangBerjalan()) {
+            return back()->with('error', 'Kehadiran hanya bisa dicatat saat pelatihan sedang berjalan.');
+        }
+
+        // Cegah double klik
+        if ($peserta->status_kehadiran === 'hadir') {
+            return back()->with('error', 'Anda sudah tercatat hadir di pelatihan ini.');
+        }
+
+        $peserta->update([
+            'status_kehadiran' => 'hadir',
+            'waktu_hadir'      => now(),
+        ]);
+
+        return back()->with('success', 'Kehadiran Anda berhasil dicatat.');
+    }
 }
