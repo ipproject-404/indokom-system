@@ -56,33 +56,52 @@ class PresensiController extends Controller
             });
         }
 
-        $karyawans = $karyawansQuery->orderBy('nama_lengkap', 'asc')->paginate(10);
+        // Filter Server-Side
+        if ($request->filled('perusahaan')) {
+            $karyawansQuery->whereHas('perusahaan', function($q) use ($request) {
+                $q->where('nama_perusahaan', $request->perusahaan);
+            });
+        }
+        if ($request->filled('divisi')) {
+            $karyawansQuery->whereHas('departemen.divisi', function($q) use ($request) {
+                $q->where('nama_divisi', $request->divisi);
+            });
+        }
+        if ($request->filled('departemen')) {
+            $karyawansQuery->whereHas('departemen', function($q) use ($request) {
+                $q->where('nama_departemen', $request->departemen);
+            });
+        }
+        if ($request->filled('jabatan')) {
+            $karyawansQuery->whereHas('jabatan', function($q) use ($request) {
+                $q->where('nama_jabatan', $request->jabatan);
+            });
+        }
+
+        $karyawans = $karyawansQuery->orderBy('nama_lengkap', 'asc')->paginate(10)->withQueryString();
 
         $karyawanIds = $karyawans->pluck('id');
+
         $presensiData = Presensi::whereIn('karyawan_id', $karyawanIds)
             ->whereBetween('tanggal', [$startDate, $endDate])
             ->get()
-            ->groupBy('karyawan_id')
-            ->map(function ($items) {
-                return $items->keyBy('tanggal');
-            });
+            ->groupBy([
+                'karyawan_id',
+                function ($item) {
+                    return Carbon::parse($item->tanggal)->toDateString();
+                }
+            ]);
 
         $totalKehadiran = Presensi::whereBetween('tanggal', [$startDate, $endDate])->count();
         $belumPulang = Presensi::whereBetween('tanggal', [$startDate, $endDate])->whereNull('jam_pulang')->count();
         $selisihHari = count($dates);
         $rataHarian = $selisihHari > 0 ? round($totalKehadiran / $selisihHari) : $totalKehadiran;
 
-        // ==========================================
-        // DATA MASTER UNTUK LIVE FILTER
-        // ==========================================
         $allPerusahaans = Perusahaan::where('status', 'aktif')->orderBy('nama_perusahaan')->get();
         $allDivisis     = Divisi::where('status', 'aktif')->orderBy('nama_divisi')->get();
         $allDepartemens = Departemen::where('status', 'aktif')->orderBy('nama_departemen')->get();
         $allJabatans    = Jabatan::orderBy('nama_jabatan')->get();
 
-        // ==========================================
-        // DATA UNTUK MODAL MULTI-HARI (semua karyawan)
-        // ==========================================
         $semuaKaryawan = Karyawan::with(['departemen', 'jabatan'])
                             ->orderBy('nama_lengkap', 'asc')
                             ->get();
@@ -98,7 +117,6 @@ class PresensiController extends Controller
 
     /**
      * Simpan status kehadiran manual (single hari)
-     * Dipanggil via AJAX dari halaman Matrix.
      */
     public function simpanStatusManual(Request $request)
     {
@@ -109,7 +127,6 @@ class PresensiController extends Controller
             'keterangan'       => 'nullable|string|max:500',
         ]);
 
-        // Cek: tidak boleh edit kalau sudah ada presensi QR
         $existing = Presensi::where('karyawan_id', $request->karyawan_id)
             ->where('tanggal', $request->tanggal)
             ->first();
@@ -121,7 +138,6 @@ class PresensiController extends Controller
             ], 422);
         }
 
-        // Simpan/update
         $presensi = Presensi::updateOrCreate(
             [
                 'karyawan_id' => $request->karyawan_id,
@@ -141,17 +157,11 @@ class PresensiController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Status kehadiran berhasil disimpan.',
-            'data'    => [
-                'id'               => $presensi->id,
-                'status_kehadiran' => $presensi->status_kehadiran,
-                'keterangan'       => $presensi->keterangan_manual,
-            ],
         ]);
     }
 
     /**
      * Simpan izin/cuti multi-hari (bulk)
-     * Otomatis skip hari yang sudah ada presensi QR.
      */
     public function simpanIzinMultiHari(Request $request)
     {
@@ -166,7 +176,6 @@ class PresensiController extends Controller
         $start = Carbon::parse($request->tanggal_mulai);
         $end   = Carbon::parse($request->tanggal_selesai);
 
-        // Batasi max 30 hari
         if ($start->diffInDays($end) > 30) {
             return response()->json([
                 'success' => false,
@@ -174,7 +183,6 @@ class PresensiController extends Controller
             ], 422);
         }
 
-        // Cek: tidak boleh menyentuh tanggal yang sudah absen QR
         $bentrok = Presensi::where('karyawan_id', $request->karyawan_id)
             ->whereBetween('tanggal', [$start->toDateString(), $end->toDateString()])
             ->whereNotNull('jam_masuk')
@@ -184,11 +192,10 @@ class PresensiController extends Controller
         if ($bentrok) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ada tanggal yang sudah absen QR di rentang ini. Hapus dulu atau ubah rentang.',
+                'message' => 'Ada tanggal yang sudah absen QR di rentang ini.',
             ], 422);
         }
 
-        // Loop dan save per hari
         $jumlah = 0;
         for ($tgl = $start->copy(); $tgl->lte($end); $tgl->addDay()) {
             Presensi::updateOrCreate(
@@ -211,7 +218,6 @@ class PresensiController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Berhasil input {$jumlah} hari untuk karyawan ini.",
-            'jumlah'  => $jumlah,
         ]);
     }
 
@@ -246,7 +252,7 @@ class PresensiController extends Controller
     }
 
     /**
-     * Export Laporan Rinci 1 Karyawan ke Excel (.xls HTML)
+     * Export Laporan Rinci 1 Karyawan ke Excel
      */
     public function exportExcel(Request $request)
     {
@@ -292,10 +298,243 @@ class PresensiController extends Controller
         $html = $this->buildLaporanRinciHtml($karyawan, $presensi, $lembur, $startDate, $endDate);
 
         $namaFile = preg_replace('/[\\\\\/\?\*\[\]:\|<>"]/', '', $karyawan->nama_lengkap);
-        $namaFile = trim($namaFile);
-        $namaFile = str_replace(' ', '_', $namaFile);
+        $namaFile = trim(str_replace(' ', '_', $namaFile));
 
         $fileName = 'Laporan_Rinci_' . $namaFile . '_' . $startDate . '_sd_' . $endDate . '.xls';
+
+        return response("\xEF\xBB\xBF" . $html, 200, [
+            'Content-Type'        => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Cache-Control'       => 'max-age=0',
+        ]);
+    }
+
+    /**
+     * Export Matriks Kehadiran Massal (Semua Karyawan Terpilih / Sesuai Filter)
+     */
+    public function exportExcelMassal(Request $request)
+    {
+        Carbon::setLocale('id');
+
+        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
+        $endDate   = $request->input('end_date', Carbon::today()->toDateString());
+
+        $query = Karyawan::with(['departemen.divisi', 'jabatan', 'perusahaan']);
+
+        if ($request->filled('karyawan_ids')) {
+            $ids = explode(',', $request->input('karyawan_ids'));
+            $query->whereIn('id', $ids);
+        } else {
+            if ($request->filled('search')) {
+                $query->where(function ($q) use ($request) {
+                    $q->where('nama_lengkap', 'like', "%{$request->search}%")
+                      ->orWhere('nik_kerja', 'like', "%{$request->search}%");
+                });
+            }
+            if ($request->filled('perusahaan')) {
+                $query->whereHas('perusahaan', fn($q) => $q->where('nama_perusahaan', $request->perusahaan));
+            }
+            if ($request->filled('divisi')) {
+                $query->whereHas('departemen.divisi', fn($q) => $q->where('nama_divisi', $request->divisi));
+            }
+            if ($request->filled('departemen')) {
+                $query->whereHas('departemen', fn($q) => $q->where('nama_departemen', $request->departemen));
+            }
+            if ($request->filled('jabatan')) {
+                $query->whereHas('jabatan', fn($q) => $q->where('nama_jabatan', $request->jabatan));
+            }
+        }
+
+        // Urutkan berdasarkan Perusahaan, lalu Departemen
+        $karyawans = $query->orderBy('perusahaan_id')->orderBy('departemen_id')->orderBy('nama_lengkap')->get();
+        $karyawanIds = $karyawans->pluck('id');
+
+        $period = CarbonPeriod::create($startDate, $endDate);
+        $dates = [];
+        foreach ($period as $date) {
+            $dates[] = $date->toDateString();
+        }
+
+        $presensiData = Presensi::whereIn('karyawan_id', $karyawanIds)
+            ->whereBetween('tanggal', [$startDate, $endDate])
+            ->get()
+            ->groupBy([
+                'karyawan_id',
+                function ($item) {
+                    return Carbon::parse($item->tanggal)->toDateString();
+                }
+            ]);
+
+        // Group by Perusahaan, lalu Departemen untuk Merge Rowspan
+        $groupedKaryawans = $karyawans->groupBy(function($k) {
+            return $k->perusahaan->nama_perusahaan ?? 'Tanpa PT';
+        })->map(function($items) {
+            return $items->groupBy(function($k) {
+                return $k->departemen->nama_departemen ?? 'Tanpa Departemen';
+            });
+        });
+
+        $fileName = 'Matrix_Kehadiran_' . $startDate . '_sd_' . $endDate . '.xls';
+
+        // Styling Header
+        $thStyle = 'border:1px solid #475569; padding:8px 4px; background-color:#1E293B; color:#FFFFFF; font-weight:bold; text-align:center; font-family:Arial; font-size:9pt; vertical-align:middle;';
+        $thWeekend = 'border:1px solid #475569; padding:8px 4px; background-color:#991B1B; color:#FFFFFF; font-weight:bold; text-align:center; font-family:Arial; font-size:9pt; vertical-align:middle;';
+        
+        // Styling Body Dasar
+        $tdBase = 'border:1px solid #CBD5E1; padding:4px 6px; font-family:Arial; font-size:9pt; text-align:center; vertical-align:middle;';
+        $tdName = 'border:1px solid #CBD5E1; padding:4px 6px; font-family:Arial; font-size:9pt; text-align:left; vertical-align:middle; background-color:#FFFFFF;';
+        
+        // Warna Status
+        $bgHadir = 'background-color:#D1FAE5; color:#065F46; font-weight:bold;';
+        $bgSakit = 'background-color:#DBEAFE; color:#1E40AF; font-weight:bold;';
+        $bgIzin  = 'background-color:#FEF3C7; color:#B45309; font-weight:bold;';
+        $bgCuti  = 'background-color:#EDE9FE; color:#6D28D9; font-weight:bold;';
+        $bgAlpa  = 'background-color:#FEE2E2; color:#B91C1C; font-weight:bold;';
+        $bgDinas = 'background-color:#FFEDD5; color:#C2410C; font-weight:bold;';
+        $bgLibur = 'background-color:#F1F5F9; color:#64748B; font-style:italic;';
+
+        ob_start();
+        ?>
+<html xmlns:x="urn:schemas-microsoft-com:office:excel">
+<head>
+<meta charset="UTF-8">
+<!--[if gte mso 9]>
+<xml>
+    <x:ExcelWorkbook>
+        <x:ExcelWorksheets>
+            <x:ExcelWorksheet>
+                <x:Name>Matrix Kehadiran</x:Name>
+                <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+            </x:ExcelWorksheet>
+        </x:ExcelWorksheets>
+    </x:ExcelWorkbook>
+</xml>
+<![endif]-->
+</head>
+<body>
+    <h2 style="font-family:Arial; margin:0 0 4px 0; color:#1E293B;">Matrix Kehadiran Karyawan</h2>
+    <p style="font-family:Arial; margin:0 0 15px 0; font-size:11pt; color:#475569;">
+        Periode: <b><?= Carbon::parse($startDate)->translatedFormat('d-M-Y') ?> sd <?= Carbon::parse($endDate)->translatedFormat('d-M-Y') ?></b>
+    </p>
+
+    <table cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+        <thead>
+            <tr>
+                <th style="<?= $thStyle ?> width:30px;">No</th>
+                <th style="<?= $thStyle ?> width:150px;">Nama Karyawan</th>
+                <th style="<?= $thStyle ?> width:80px;">NIK</th>
+                <th style="<?= $thStyle ?> width:150px;">PT</th>
+                <th style="<?= $thStyle ?> width:150px;">Departemen</th>
+                <?php foreach ($dates as $date): ?>
+                    <?php $isWeekend = Carbon::parse($date)->isSunday(); ?>
+                    <th style="<?= $isWeekend ? $thWeekend : $thStyle ?>">
+                        <?= Carbon::parse($date)->format('d') ?><br>
+                        <span style="font-size:7pt;font-weight:normal;"><?= Carbon::parse($date)->translatedFormat('D') ?></span>
+                    </th>
+                <?php endforeach; ?>
+            </tr>
+        </thead>
+        <tbody>
+            <?php $no = 1; ?>
+            <?php foreach ($groupedKaryawans as $ptName => $departemens): ?>
+                <?php 
+                    // Hitung total karyawan di PT ini untuk Rowspan PT
+                    $totalKaryawanPT = $departemens->flatten()->count();
+                    $isFirstPT = true;
+                ?>
+                
+                <?php foreach ($departemens as $deptName => $employees): ?>
+                    <?php $rowspanDept = count($employees); ?>
+                    
+                    <?php foreach ($employees as $indexDept => $k): ?>
+                        <tr>
+                            <td style="<?= $tdBase ?>"><?= $no++ ?></td>
+                            <td style="<?= $tdName ?>"><strong><?= e($k->nama_lengkap) ?></strong></td>
+                            <td style="<?= $tdName ?> mso-number-format:'\@';"><?= e($k->nik_kerja) ?></td>
+                            
+                            <!-- Merge PT -->
+                            <?php if ($isFirstPT): ?>
+                                <td style="<?= $tdName ?> text-align:center; font-weight:bold; background-color:#F8FAFC;" rowspan="<?= $totalKaryawanPT ?>">
+                                    <?= e($ptName) ?>
+                                </td>
+                                <?php $isFirstPT = false; ?>
+                            <?php endif; ?>
+                            
+                            <!-- Merge Departemen -->
+                            <?php if ($indexDept === 0): ?>
+                                <td style="<?= $tdName ?> text-align:center; font-weight:bold; background-color:#F8FAFC;" rowspan="<?= $rowspanDept ?>">
+                                    <?= e($deptName) ?>
+                                </td>
+                            <?php endif; ?>
+                            
+                            <!-- Hari -->
+                            <?php foreach ($dates as $date): ?>
+                                <?php
+                                    $presensi_harian = $presensiData[$k->id][$date] ?? null;
+                                    $statusManual = null;
+                                    $jam_masuk = null;
+                                    $jam_pulang = null;
+                                    
+                                    if ($presensi_harian) {
+                                        $manual = $presensi_harian->firstWhere('status_kehadiran', '!=', null);
+                                        if ($manual) $statusManual = $manual->status_kehadiran;
+                                        
+                                        $qr = $presensi_harian->firstWhere('jam_masuk', '!=', null);
+                                        if ($qr) {
+                                            $jam_masuk = $qr->jam_masuk;
+                                            $jam_pulang = $qr->jam_pulang;
+                                        }
+                                    }
+                                    
+                                    $isSunday = Carbon::parse($date)->isSunday();
+                                    $teks = '-';
+                                    $styleTd = $tdBase . ' background-color:#FFFFFF;'; // Default putih
+                                    
+                                    if ($statusManual) {
+                                        if ($statusManual == 'sakit') { $teks = 'S'; $styleTd = $tdBase . $bgSakit; }
+                                        elseif ($statusManual == 'izin') { $teks = 'I'; $styleTd = $tdBase . $bgIzin; }
+                                        elseif ($statusManual == 'cuti') { $teks = 'C'; $styleTd = $tdBase . $bgCuti; }
+                                        elseif ($statusManual == 'alpa') { $teks = 'A'; $styleTd = $tdBase . $bgAlpa; }
+                                        elseif ($statusManual == 'dinas_luar') { $teks = 'DL'; $styleTd = $tdBase . $bgDinas; }
+                                        elseif ($statusManual == 'libur_nasional') { $teks = 'L'; $styleTd = $tdBase . $bgLibur; }
+                                    } elseif ($jam_masuk) {
+                                        $in = $jam_masuk ? substr($jam_masuk, 0, 5) : '-';
+                                        $out = $jam_pulang ? substr($jam_pulang, 0, 5) : '-';
+                                        $teks = "{$in}<br><span style='color:#047857;font-size:7pt;'>{$out}</span>";
+                                        $styleTd = $tdBase . $bgHadir;
+                                    } elseif ($isSunday) {
+                                        $teks = 'L';
+                                        $styleTd = $tdBase . $bgLibur;
+                                    } else {
+                                        if ($isSunday) $styleTd = $tdBase . ' background-color:#FEF2F2;'; // Merah pudar jika minggu kosong
+                                    }
+                                ?>
+                                <td style="<?= $styleTd ?> font-size:8.5pt;"><?= $teks ?></td>
+                            <?php endforeach; ?>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endforeach; ?>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+    
+    <br>
+    <table style="border:none; font-family:Arial; font-size:9pt; color:#475569;">
+        <tr>
+            <td style="border:none; font-weight:bold; color:#1E293B; padding-right:10px;">Keterangan:</td>
+            <td style="border:1px solid #CBD5E1; <?= $bgHadir ?> padding:4px 8px;">Jam Masuk / Pulang</td>
+            <td style="border:1px solid #CBD5E1; <?= $bgSakit ?> padding:4px 8px;">S = Sakit</td>
+            <td style="border:1px solid #CBD5E1; <?= $bgIzin ?> padding:4px 8px;">I = Izin</td>
+            <td style="border:1px solid #CBD5E1; <?= $bgCuti ?> padding:4px 8px;">C = Cuti</td>
+            <td style="border:1px solid #CBD5E1; <?= $bgAlpa ?> padding:4px 8px;">A = Alpa</td>
+            <td style="border:1px solid #CBD5E1; <?= $bgDinas ?> padding:4px 8px;">DL = Dinas Luar</td>
+            <td style="border:1px solid #CBD5E1; <?= $bgLibur ?> padding:4px 8px;">L = Libur</td>
+        </tr>
+    </table>
+</body>
+</html>
+        <?php
+        $html = ob_get_clean();
 
         return response("\xEF\xBB\xBF" . $html, 200, [
             'Content-Type'        => 'application/vnd.ms-excel; charset=UTF-8',
@@ -401,7 +640,6 @@ class PresensiController extends Controller
             $absenMasuk  = ($prs && $prs->jam_masuk)  ? Carbon::parse($prs->jam_masuk)->format('H:i')  : '-';
             $absenPulang = ($prs && $prs->jam_pulang) ? Carbon::parse($prs->jam_pulang)->format('H:i') : '-';
 
-            // Status manual (kalau ada)
             $statusManual = $prs->status_kehadiran ?? null;
             $labelManual = match($statusManual) {
                 'sakit'          => 'SAKIT',
@@ -470,7 +708,6 @@ class PresensiController extends Controller
             $durasiLembur = $lmb ? ($lmb->durasi_jam ?? '-') : '-';
             $tglFormatted = $tgl->translatedFormat('d-M-Y');
 
-            // Info lokasi
             $infoLokasi = '-';
             if ($prs && $prs->jam_masuk) {
                 $parts = [];
@@ -499,9 +736,7 @@ class PresensiController extends Controller
                 $infoLokasi = implode('<br><br>', $parts);
             }
 
-            // Render baris
             if ($statusManual) {
-                // Ada status manual — tampilkan status
                 $styleManual = match($statusManual) {
                     'sakit'          => $tdSakit,
                     'izin'           => $tdIzin,

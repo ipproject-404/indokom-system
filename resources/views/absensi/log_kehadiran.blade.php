@@ -7,7 +7,10 @@
     <link rel="icon" href="{{ asset('favicon.png') }}" type="image/x-icon">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js untuk Dropdown Export -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
+        [x-cloak]{display:none!important;}
         .sticky-col-checkbox { position: sticky; left: 0; background-color: #f8fafc; z-index: 12; width: 40px; min-width: 40px; max-width: 40px; }
         .sticky-col-name { position: sticky; left: 40px; background-color: #f8fafc; z-index: 10; box-shadow: 3px 0 6px rgba(0,0,0,0.06); }
         .matrix-scroll::-webkit-scrollbar { height: 12px; width: 12px; }
@@ -131,73 +134,90 @@
                             <i class="bi bi-calendar-plus-fill"></i> Izin/Cuti Multi-Hari
                         </button>
 
-                        <button type="button" onclick="exportTerpilihExcel()" 
-                                class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors shadow-sm flex items-center gap-1.5">
-                            <i class="bi bi-file-earmark-excel"></i> Export
-                        </button>
+                        <!-- DROPDOWN EXPORT -->
+                        <div class="relative" x-data="{ bukaExport: false }">
+                            <button type="button" @click="bukaExport = !bukaExport" @click.away="bukaExport = false"
+                                    class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors shadow-sm flex items-center gap-1.5">
+                                <i class="bi bi-file-earmark-excel"></i> Export 
+                                <i class="bi bi-chevron-down text-[10px]"></i>
+                            </button>
+                            <div x-show="bukaExport" x-cloak x-transition
+                                class="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50">
+                                <button type="button" onclick="exportTerpilihExcel()"
+                                    class="w-full text-left flex items-start gap-2.5 px-3 py-2.5 text-xs text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors">
+                                    <i class="bi bi-files text-emerald-600 text-base mt-0.5"></i>
+                                    <div>
+                                        <div class="font-bold">Per Karyawan</div>
+                                        <div class="text-[9px] text-gray-400">1 file Excel per orang</div>
+                                    </div>
+                                </button>
+                                <button type="button" onclick="exportMassalExcel()"
+                                    class="w-full text-left flex items-start gap-2.5 px-3 py-2.5 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors border-t border-gray-100">
+                                    <i class="bi bi-table text-blue-600 text-base mt-0.5"></i>
+                                    <div>
+                                        <div class="font-bold">Keseluruhan (Matrix)</div>
+                                        <div class="text-[9px] text-gray-400">1 file berisi semua data</div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
 
                         <a href="{{ route('kehadiran.log') }}" 
                            class="bg-gray-100 text-gray-700 border border-gray-300 px-3 py-2 rounded-lg text-xs font-bold hover:bg-gray-200 transition-colors flex items-center gap-1.5">
                             <i class="bi bi-arrow-counterclockwise"></i> Reset
                         </a>
                     </div>
-                </form>
 
-                <div class="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100">
-                    <div class="relative flex-1 min-w-[240px]">
-                        <i class="bi bi-search absolute left-3 top-2.5 text-gray-400 text-sm"></i>
-                        <input type="text" id="searchInput" name="search" form="filterForm"
-                               value="{{ $search }}" autocomplete="off"
-                               placeholder="Cari nama atau NIK... (live)"
-                               class="w-full pl-9 pr-16 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-600 outline-none">
-                        <span id="searchBadge" class="hidden absolute right-2 top-1.5 text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">⚡ Live</span>
-                        <span id="searchLoading" class="hidden search-loading"></span>
+                    <div class="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100">
+                        <div class="relative flex-1 min-w-[240px]">
+                            <i class="bi bi-search absolute left-3 top-2.5 text-gray-400 text-sm"></i>
+                            <input type="text" id="searchInput" name="search"
+                                   value="{{ $search }}" autocomplete="off"
+                                   placeholder="Cari nama atau NIK... (tekan Enter)"
+                                   onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('filterForm').submit();}"
+                                   class="w-full pl-9 pr-16 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-600 outline-none">
+                        </div>
+
+                        <div class="h-8 w-px bg-gray-200 hidden sm:block"></div>
+
+                        <!-- Filter diganti onchange agar submit ke backend -->
+                        <select name="perusahaan" onchange="document.getElementById('filterForm').submit()"
+                                class="filter-select px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer max-w-[160px]">
+                            <option value="">🏢 Semua PT</option>
+                            @foreach($allPerusahaans as $pt)
+                                <option value="{{ $pt->nama_perusahaan }}" {{ request('perusahaan') == $pt->nama_perusahaan ? 'selected' : '' }}>{{ $pt->nama_perusahaan }}</option>
+                            @endforeach
+                        </select>
+
+                        <select name="divisi" onchange="document.getElementById('filterForm').submit()"
+                                class="filter-select px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer max-w-[140px]">
+                            <option value="">📁 Semua Divisi</option>
+                            @foreach($allDivisis as $dv)
+                                <option value="{{ $dv->nama_divisi }}" {{ request('divisi') == $dv->nama_divisi ? 'selected' : '' }}>{{ $dv->nama_divisi }}</option>
+                            @endforeach
+                        </select>
+
+                        <select name="departemen" onchange="document.getElementById('filterForm').submit()"
+                                class="filter-select px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer max-w-[160px]">
+                            <option value="">🏛️ Semua Dept</option>
+                            @foreach($allDepartemens as $dp)
+                                <option value="{{ $dp->nama_departemen }}" {{ request('departemen') == $dp->nama_departemen ? 'selected' : '' }}>{{ $dp->nama_departemen }}</option>
+                            @endforeach
+                        </select>
+
+                        <select name="jabatan" onchange="document.getElementById('filterForm').submit()"
+                                class="filter-select px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer max-w-[160px]">
+                            <option value="">💼 Semua Jabatan</option>
+                            @foreach($allJabatans as $jb)
+                                <option value="{{ $jb->nama_jabatan }}" {{ request('jabatan') == $jb->nama_jabatan ? 'selected' : '' }}>{{ $jb->nama_jabatan }}</option>
+                            @endforeach
+                        </select>
+
+                        <a href="{{ route('kehadiran.log') }}" class="text-[10px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-2 rounded-lg transition-colors border border-rose-200 flex items-center gap-1">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </a>
                     </div>
-
-                    <div class="h-8 w-px bg-gray-200 hidden sm:block"></div>
-
-                    <select id="liveFilterPerusahaan" onchange="applyAllFilters()"
-                            class="filter-select px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer max-w-[160px]">
-                        <option value="">🏢 Semua PT</option>
-                        @foreach($allPerusahaans as $pt)
-                            <option value="{{ $pt->nama_perusahaan }}">{{ $pt->nama_perusahaan }}</option>
-                        @endforeach
-                    </select>
-
-                    <select id="liveFilterDivisi" onchange="applyAllFilters()"
-                            class="filter-select px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer max-w-[140px]">
-                        <option value="">📁 Semua Divisi</option>
-                        @foreach($allDivisis as $dv)
-                            <option value="{{ $dv->nama_divisi }}">{{ $dv->nama_divisi }}</option>
-                        @endforeach
-                    </select>
-
-                    <select id="liveFilterDepartemen" onchange="applyAllFilters()"
-                            class="filter-select px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer max-w-[160px]">
-                        <option value="">🏛️ Semua Dept</option>
-                        @foreach($allDepartemens as $dp)
-                            <option value="{{ $dp->nama_departemen }}">{{ $dp->nama_departemen }}</option>
-                        @endforeach
-                    </select>
-
-                    <select id="liveFilterJabatan" onchange="applyAllFilters()"
-                            class="filter-select px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer max-w-[160px]">
-                        <option value="">💼 Semua Jabatan</option>
-                        @foreach($allJabatans as $jb)
-                            <option value="{{ $jb->nama_jabatan }}">{{ $jb->nama_jabatan }}</option>
-                        @endforeach
-                    </select>
-
-                    <button type="button" onclick="resetLiveFilter()" 
-                            class="text-[10px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-2 rounded-lg transition-colors border border-rose-200 flex items-center gap-1">
-                        <i class="bi bi-x-circle"></i> Clear
-                    </button>
-                </div>
-
-                <p id="filterInfoBar" class="text-[11px] text-gray-500 mt-2 hidden">
-                    <i class="bi bi-info-circle text-blue-500"></i>
-                    Menampilkan <b id="matchCount" class="text-gray-700">0</b> dari <b id="totalCount" class="text-gray-700">0</b> karyawan di halaman ini
-                </p>
+                </form>
             </div>
 
             <!-- KETERANGAN WARNA -->
@@ -264,17 +284,9 @@
                                 $namaDept = $karyawan->departemen->nama_departemen ?? '';
                                 $namaJab  = $karyawan->jabatan->nama_jabatan ?? '';
                             @endphp
-                            <tr class="hover:bg-blue-50/50 transition-colors group matrix-row"
-                                data-nama="{{ strtolower($karyawan->nama_lengkap) }}"
-                                data-nik="{{ strtolower($karyawan->nik_kerja) }}"
-                                data-perusahaan="{{ $namaPT }}"
-                                data-divisi="{{ $namaDiv }}"
-                                data-departemen="{{ $namaDept }}"
-                                data-jabatan="{{ $namaJab }}">
-                                
+                            <tr class="hover:bg-blue-50/50 transition-colors group matrix-row">
                                 <td class="sticky-col-checkbox group-hover:bg-slate-100 text-center px-2 py-3 border-r border-gray-300">
-                                    <input type="checkbox" class="row-checkbox-karyawan w-4 h-4 rounded cursor-pointer accent-blue-600" 
-                                           value="{{ $karyawan->id }}">
+                                    <input type="checkbox" class="row-checkbox-karyawan w-4 h-4 rounded cursor-pointer accent-blue-600" value="{{ $karyawan->id }}">
                                 </td>
 
                                 <td class="sticky-col-name group-hover:bg-slate-100 border-r-2 border-gray-300 px-5 py-3 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
@@ -284,16 +296,35 @@
 
                                 @foreach($dates as $date)
                                 @php
-                                    $prs = isset($presensiData[$karyawan->id]) && isset($presensiData[$karyawan->id][$date]) 
-                                            ? $presensiData[$karyawan->id][$date] 
-                                            : null;
+                                    // ⭐ LOGIKA BARU: Cari data manual & QR di hari itu
+                                    $presensi_harian = $presensiData[$karyawan->id][$date] ?? null;
+                                    $prs = null;
+                                    $statusManual = null;
+                                    $jamMasuk = null;
+                                    $jamPulang = null;
+
+                                    if ($presensi_harian) {
+                                        // Cek manual dulu
+                                        $manual = $presensi_harian->firstWhere('status_kehadiran', '!=', null);
+                                        if ($manual) {
+                                            $statusManual = $manual->status_kehadiran;
+                                            $prs = $manual;
+                                        }
+                                        
+                                        // Cek QR untuk info jam/lokasi
+                                        $qr = $presensi_harian->firstWhere('jam_masuk', '!=', null);
+                                        if ($qr) {
+                                            $jamMasuk = $qr->jam_masuk;
+                                            $jamPulang = $qr->jam_pulang;
+                                            if (!$prs) $prs = $qr;
+                                        }
+                                    }
                                     
                                     $isSunday = \Carbon\Carbon::parse($date)->isSunday();
-                                    $statusManual = $prs->status_kehadiran ?? null;
                                     
                                     $cellBg = 'bg-gray-50/40';
-                                    if ($prs && $prs->jam_masuk && !$statusManual) {
-                                        if ($prs->jam_pulang) {
+                                    if ($jamMasuk && !$statusManual) {
+                                        if ($jamPulang) {
                                             $cellBg = 'bg-emerald-50/60 hover:bg-emerald-100';
                                         } else {
                                             $cellBg = 'bg-amber-50/60 hover:bg-amber-100';
@@ -308,14 +339,14 @@
                                     data-is-sunday="{{ $isSunday ? '1' : '0' }}"
                                     @if($prs)
                                         data-prs="1"
-                                        data-jam-masuk="{{ $prs->jam_masuk }}"
-                                        data-jam-pulang="{{ $prs->jam_pulang }}"
-                                        data-radius-masuk="{{ $prs->status_radius_masuk }}"
-                                        data-radius-pulang="{{ $prs->status_radius_pulang }}"
-                                        data-alamat-masuk="{{ $prs->alamat_masuk ?? $prs->nama_jalan_masuk ?? '' }}"
-                                        data-alamat-pulang="{{ $prs->alamat_pulang ?? $prs->nama_jalan_pulang ?? '' }}"
-                                        data-jarak-masuk="{{ $prs->jarak_masuk_meter ?? '' }}"
-                                        data-jarak-pulang="{{ $prs->jarak_pulang_meter ?? '' }}"
+                                        data-jam-masuk="{{ $jamMasuk }}"
+                                        data-jam-pulang="{{ $jamPulang }}"
+                                        data-radius-masuk="{{ $qr->status_radius_masuk ?? '' }}"
+                                        data-radius-pulang="{{ $qr->status_radius_pulang ?? '' }}"
+                                        data-alamat-masuk="{{ $qr->alamat_masuk ?? $qr->nama_jalan_masuk ?? '' }}"
+                                        data-alamat-pulang="{{ $qr->alamat_pulang ?? $qr->nama_jalan_pulang ?? '' }}"
+                                        data-jarak-masuk="{{ $qr->jarak_masuk_meter ?? '' }}"
+                                        data-jarak-pulang="{{ $qr->jarak_pulang_meter ?? '' }}"
                                         data-metode="{{ $prs->metode_presensi }}"
                                         data-status-manual="{{ $statusManual ?? '' }}"
                                         data-keterangan-manual="{{ $prs->keterangan_manual ?? '' }}"
@@ -337,8 +368,8 @@
                                             <i class="bi {{ $cfg['ikon'] }} {{ $cfg['warna'] }} text-2xl block"></i>
                                             <span class="text-[8px] font-bold uppercase {{ $cfg['warna'] }}">{{ $cfg['label'] }}</span>
                                         </div>
-                                    @elseif($prs && $prs->jam_masuk)
-                                        @if($prs->jam_pulang && $prs->status_radius_masuk == 'dalam_radius' && $prs->status_radius_pulang == 'dalam_radius')
+                                    @elseif($jamMasuk)
+                                        @if($jamPulang && ($qr->status_radius_masuk ?? '') == 'dalam_radius' && ($qr->status_radius_pulang ?? '') == 'dalam_radius')
                                             <i class="bi bi-check-square-fill text-emerald-500 text-3xl drop-shadow-sm"></i>
                                         @else
                                             <i class="bi bi-exclamation-square-fill text-amber-500 text-3xl drop-shadow-sm"></i>
@@ -362,18 +393,6 @@
                                 </td>
                             </tr>
                             @endforelse
-
-                            <tr id="emptyFilterRow" class="hidden">
-                                <td colspan="{{ count($dates) + 2 }}" class="px-6 py-14 text-center">
-                                    <div class="flex flex-col items-center text-gray-400">
-                                        <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-                                            <i class="bi bi-funnel text-3xl"></i>
-                                        </div>
-                                        <p class="font-semibold text-gray-600">Tidak ada karyawan yang cocok</p>
-                                        <p class="text-xs mt-1">Coba ubah filter / kata kunci pencarian</p>
-                                    </div>
-                                </td>
-                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -396,7 +415,6 @@
 <div id="tooltipPortal" class="hidden"></div>
 
 @php
-    // Mapping manual (arrow function tidak didukung di @json Blade)
     $karyawanSimple = $semuaKaryawan->map(function($k) {
         return [
             'id'   => $k->id,
@@ -412,7 +430,6 @@
 ========================================== -->
 <div id="statusModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden max-h-[90vh] flex flex-col">
-        
         <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
@@ -643,90 +660,51 @@
 </div>
 
 <script>
-    // ==========================================
-    // VARIABEL GLOBAL
-    // ==========================================
-    const serverKeyword = @json($search ?? '');
     const CSRF = '{{ csrf_token() }}';
     const semuaKaryawan = @json($karyawanSimple);
 
-    const rows = Array.from(document.querySelectorAll('#tabelMatrixBody .matrix-row'));
-    const searchInput = document.getElementById('searchInput');
-    const searchBadge = document.getElementById('searchBadge');
-    const searchLoading = document.getElementById('searchLoading');
-    const filterInfoBar = document.getElementById('filterInfoBar');
-    const matchCount  = document.getElementById('matchCount');
-    const totalCount  = document.getElementById('totalCount');
-
-    // ==========================================
-    // ⭐ AUTO-SUBMIT TANGGAL (Baru)
-    // ==========================================
     function submitDateFilter() {
         const start = document.getElementById('start_date').value;
         const end = document.getElementById('end_date').value;
-
         if (start && end && new Date(start) > new Date(end)) {
             alert('Tanggal "Dari" tidak boleh lebih besar dari "Sampai"!');
             return;
         }
-
         document.getElementById('filterForm').submit();
     }
 
-    // ==========================================
-    // QUICK DATE
-    // ==========================================
     function setQuickDate(daysAgo, buttonId) {
         const end = new Date();
         const start = new Date();
         start.setDate(end.getDate() - daysAgo);
-
         document.getElementById('end_date').value = end.toISOString().split('T')[0];
         document.getElementById('start_date').value = start.toISOString().split('T')[0];
-        
         document.querySelectorAll('.quick-btn').forEach(btn => {
             btn.className = 'quick-btn px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg border border-gray-300 transition-colors';
         });
-        
         const activeBtn = document.getElementById(buttonId);
         if (activeBtn) {
             activeBtn.className = 'quick-btn px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-300 text-xs font-semibold rounded-lg transition-colors';
         }
-
         document.getElementById('filterForm').submit();
     }
 
     window.addEventListener('load', function() {
         const start = document.getElementById('start_date').value;
         const end = document.getElementById('end_date').value;
-        
         const startDate = new Date(start);
         const endDate = new Date(end);
         const diffDays = Math.ceil(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24)); 
-
         let activeId = null;
         if (diffDays === 0) activeId = 'btn-quick-0';
         else if (diffDays === 6) activeId = 'btn-quick-6';
         else if (diffDays === 30) activeId = 'btn-quick-30';
-
         if (activeId) {
             const btn = document.getElementById(activeId);
             if (btn) btn.className = 'quick-btn px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-300 text-xs font-semibold rounded-lg transition-colors';
         }
-
-        if (searchInput && searchInput.value.trim() !== '') {
-            searchBadge.classList.remove('hidden');
-            setTimeout(() => {
-                searchInput.focus();
-                const len = searchInput.value.length;
-                searchInput.setSelectionRange(len, len);
-            }, 100);
-        }
     });
 
-    // ==========================================
-    // SELECT ALL
-    // ==========================================
     function toggleSelectAllKaryawan(source) {
         document.querySelectorAll('.row-checkbox-karyawan').forEach(cb => {
             const row = cb.closest('tr');
@@ -734,9 +712,6 @@
         });
     }
 
-    // ==========================================
-    // TOOLTIP PORTAL
-    // ==========================================
     const tooltipPortal = document.getElementById('tooltipPortal');
 
     function buildTooltipHTML(cell) {
@@ -849,16 +824,13 @@
     function positionTooltip(cell) {
         const rect = cell.getBoundingClientRect();
         const ttRect = tooltipPortal.getBoundingClientRect();
-
         let top  = rect.top - ttRect.height - 10;
         let left = rect.left + (rect.width / 2) - (ttRect.width / 2);
-
         if (top < 8) top = rect.bottom + 10;
         if (left < 8) left = 8;
         if (left + ttRect.width > window.innerWidth - 8) {
             left = window.innerWidth - ttRect.width - 8;
         }
-
         tooltipPortal.style.top  = top + 'px';
         tooltipPortal.style.left = left + 'px';
     }
@@ -876,125 +848,6 @@
     window.addEventListener('scroll', hideTooltip, true);
     window.addEventListener('resize', hideTooltip);
 
-    // ==========================================
-    // LIVE FILTER
-    // ==========================================
-    function applyAllFilters() {
-        const q  = (searchInput.value || '').trim().toLowerCase();
-        const pt = document.getElementById('liveFilterPerusahaan').value;
-        const dv = document.getElementById('liveFilterDivisi').value;
-        const dp = document.getElementById('liveFilterDepartemen').value;
-        const jb = document.getElementById('liveFilterJabatan').value;
-
-        const emptyRow = document.getElementById('emptyFilterRow');
-        let shown = 0;
-
-        rows.forEach(row => {
-            const nama = row.dataset.nama || '';
-            const nik  = row.dataset.nik || '';
-            const matchSearch = !q || nama.includes(q) || nik.includes(q);
-            const matchFilter =
-                (!pt || row.dataset.perusahaan === pt) &&
-                (!dv || row.dataset.divisi === dv) &&
-                (!dp || row.dataset.departemen === dp) &&
-                (!jb || row.dataset.jabatan === jb);
-
-            if (matchSearch && matchFilter) {
-                row.style.display = '';
-                shown++;
-            } else {
-                row.style.display = 'none';
-            }
-        });
-
-        const adaAktivitas = q || pt || dv || dp || jb;
-        if (adaAktivitas) {
-            filterInfoBar.classList.remove('hidden');
-            matchCount.textContent = shown;
-            totalCount.textContent = rows.length;
-        } else {
-            filterInfoBar.classList.add('hidden');
-        }
-
-        if (q) searchBadge.classList.remove('hidden');
-        else searchBadge.classList.add('hidden');
-
-        if (emptyRow) emptyRow.classList.toggle('hidden', shown > 0 || !adaAktivitas);
-
-        const selectAll = document.getElementById('selectAllKaryawan');
-        if (selectAll) selectAll.checked = false;
-    }
-
-    function reloadWithoutSearch() {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('search');
-        url.searchParams.delete('page');
-        window.location.href = url.toString();
-    }
-
-    function resetLiveFilter() {
-        document.getElementById('liveFilterPerusahaan').value = '';
-        document.getElementById('liveFilterDivisi').value = '';
-        document.getElementById('liveFilterDepartemen').value = '';
-        document.getElementById('liveFilterJabatan').value = '';
-        searchInput.value = '';
-
-        if (serverKeyword) {
-            reloadWithoutSearch();
-            return;
-        }
-        applyAllFilters();
-    }
-
-    let searchTimeout;
-    let isSubmitting = false;
-
-    if (searchInput) {
-        searchInput.addEventListener('input', function () {
-            const q = (this.value || '').trim();
-            clearTimeout(searchTimeout);
-            searchLoading.classList.add('hidden');
-            searchBadge.classList.add('hidden');
-
-            if (q === '' && serverKeyword) {
-                searchLoading.classList.remove('hidden');
-                searchTimeout = setTimeout(() => reloadWithoutSearch(), 300);
-                return;
-            }
-            if (q === '') {
-                applyAllFilters();
-                return;
-            }
-
-            searchBadge.classList.remove('hidden');
-            searchTimeout = setTimeout(() => {
-                if (isSubmitting) return;
-                isSubmitting = true;
-                searchBadge.classList.add('hidden');
-                searchLoading.classList.remove('hidden');
-                document.getElementById('filterForm').submit();
-            }, 500);
-        });
-
-        searchInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                clearTimeout(searchTimeout);
-                const q = (this.value || '').trim();
-                if (q === '') {
-                    reloadWithoutSearch();
-                } else {
-                    searchBadge.classList.add('hidden');
-                    searchLoading.classList.remove('hidden');
-                    document.getElementById('filterForm').submit();
-                }
-            }
-        });
-    }
-
-    // ==========================================
-    // MODAL SINGLE HARI
-    // ==========================================
     let activeCell = null;
     let activeKaryawanId = null;
     let activeTanggal = null;
@@ -1042,7 +895,6 @@
             alert('Pilih status kehadiran terlebih dahulu!');
             return;
         }
-
         const btn = document.getElementById('btnSaveStatus');
         const originalText = btn.innerHTML;
         btn.disabled = true;
@@ -1063,9 +915,7 @@
                     keterangan: document.getElementById('modalKeterangan').value.trim(),
                 }),
             });
-
             const data = await response.json();
-
             if (data.success) {
                 window.location.reload();
             } else {
@@ -1081,10 +931,8 @@
 
     async function deleteStatusManual() {
         if (!confirm('Yakin hapus status kehadiran ini?')) return;
-
         const btn = document.getElementById('btnHapusStatus');
         btn.disabled = true;
-
         try {
             const response = await fetch('{{ route("kehadiran.status-manual.hapus") }}', {
                 method: 'POST',
@@ -1098,9 +946,7 @@
                     tanggal: activeTanggal,
                 }),
             });
-
             const data = await response.json();
-
             if (data.success) {
                 window.location.reload();
             } else {
@@ -1117,9 +963,6 @@
         if (e.target === this) closeStatusModal();
     });
 
-    // ==========================================
-    // MODAL MULTI-HARI
-    // ==========================================
     function openMultiHariModal() {
         document.getElementById('multiKaryawanSearch').value = '';
         document.getElementById('multiKaryawanId').value = '';
@@ -1255,9 +1098,6 @@
         }
     });
 
-    // ==========================================
-    // EXPORT EXCEL
-    // ==========================================
     function exportTerpilihExcel() {
         const checked = Array.from(document.querySelectorAll('.row-checkbox-karyawan:checked'))
             .filter(cb => {
@@ -1266,7 +1106,7 @@
             });
 
         if (checked.length === 0) {
-            alert('Pilih minimal 1 karyawan terlebih dahulu!');
+            alert('Pilih minimal 1 karyawan terlebih dahulu (centang di tabel)!');
             return;
         }
 
@@ -1274,7 +1114,7 @@
         const endDate   = document.getElementById('end_date').value;
         const baseUrl   = '{{ route("kehadiran.export") }}';
 
-        if (!confirm('Anda akan mendownload ' + checked.length + ' file Excel. Lanjutkan?')) return;
+        if (!confirm('Anda akan mendownload ' + checked.length + ' file Excel (1 per karyawan). Lanjutkan?')) return;
 
         const infoBox = document.createElement('div');
         infoBox.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#1E3A8A;color:white;padding:14px 20px;border-radius:10px;font-family:Arial;font-size:14px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
@@ -1299,6 +1139,26 @@
             infoBox.innerHTML = '<i class="bi bi-check-circle-fill"></i> Selesai! ' + checked.length + ' file terdownload.';
             setTimeout(() => infoBox.remove(), 3000);
         }, checked.length * 1000 + 500);
+    }
+
+    function exportMassalExcel() {
+        const checked = Array.from(document.querySelectorAll('.row-checkbox-karyawan:checked'))
+            .map(cb => cb.value);
+
+        const startDate = document.getElementById('start_date').value;
+        const endDate   = document.getElementById('end_date').value;
+        const baseUrl   = '{{ route("kehadiran.export-massal") }}';
+
+        let url = `${baseUrl}?start_date=${startDate}&end_date=${endDate}`;
+        
+        if (checked.length > 0) {
+            url += `&karyawan_ids=${checked.join(',')}`;
+        } else {
+            const params = new URLSearchParams(window.location.search);
+            params.delete('page'); 
+            url += `&${params.toString()}`;
+        }
+        window.location.href = url;
     }
 </script>
 </body>

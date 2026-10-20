@@ -8,12 +8,12 @@ use Illuminate\Support\Facades\Auth;
 
 class LemburKaryawanController extends Controller
 {
-    /** Karyawan hanya bisa lihat status lembur miliknya. */
+    /** Riwayat + form pengajuan lembur milik karyawan yang login. */
     public function index()
     {
         Carbon::setLocale('id');
 
-        $karyawan = Auth::user()->karyawan;
+        $karyawan = $this->karyawanBolehLembur();
 
         $riwayat = Lembur::where('karyawan_id', $karyawan->id)
             ->orderByDesc('tanggal')

@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Auth;
 class PelatihanController extends Controller
 {
     // ================================================================
-    // INDEX
+    // INDEX — daftar pelatihan
     // ================================================================
     public function index(Request $request)
     {
@@ -54,7 +54,253 @@ class PelatihanController extends Controller
     }
 
     // ================================================================
-    // EXPORT PESERTA PER PELATIHAN — Excel (inline HTML)
+    // STORE — tambah pelatihan baru
+    // ================================================================
+    public function store(Request $request)
+    {
+        $request->validate([
+            'nama_pelatihan'  => 'required|string|max:150',
+            'penyelenggara'   => 'nullable|string|max:150',
+            'kategori'        => 'required|in:sertifikasi,pelatihan_internal,pelatihan_eksternal',
+            'tanggal_mulai'   => 'required|date',
+            'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_mulai',
+            'deskripsi'       => 'nullable|string',
+        ]);
+
+        Pelatihan::create([
+            ...$request->only([
+                'nama_pelatihan', 'penyelenggara', 'kategori',
+                'tanggal_mulai', 'tanggal_selesai', 'deskripsi',
+            ]),
+            'dibuat_oleh' => Auth::id(),
+        ]);
+
+        return back()->with('success', 'Pelatihan berhasil ditambahkan.');
+    }
+
+    // ================================================================
+    // UPDATE — edit pelatihan
+    // ================================================================
+    public function update(Request $request, Pelatihan $pelatihan)
+    {
+        $request->validate([
+            'nama_pelatihan'  => 'required|string|max:150',
+            'penyelenggara'   => 'nullable|string|max:150',
+            'kategori'        => 'required|in:sertifikasi,pelatihan_internal,pelatihan_eksternal',
+            'tanggal_mulai'   => 'required|date',
+            'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_mulai',
+            'deskripsi'       => 'nullable|string',
+            'status'          => 'required|in:aktif,selesai,dibatalkan',
+        ]);
+
+        $pelatihan->update($request->only([
+            'nama_pelatihan', 'penyelenggara', 'kategori',
+            'tanggal_mulai', 'tanggal_selesai', 'deskripsi', 'status',
+        ]));
+
+        return back()->with('success', 'Pelatihan berhasil diperbarui.');
+    }
+
+    // ================================================================
+    // DESTROY — hapus pelatihan
+    // ================================================================
+    public function destroy(Pelatihan $pelatihan)
+    {
+        $pelatihan->delete();
+        return back()->with('success', 'Pelatihan dihapus.');
+    }
+
+    // ================================================================
+    // TAMBAH PESERTA
+    // ================================================================
+    public function tambahPeserta(Request $request, Pelatihan $pelatihan)
+    {
+        if ($pelatihan->status !== 'aktif' && $pelatihan->status !== 'selesai') {
+            return back()->with('error', 'Pelatihan sudah dibatalkan. Daftar peserta tidak dapat diubah.');
+        }
+
+        $request->validate([
+            'karyawan_ids'   => 'required|array|min:1',
+            'karyawan_ids.*' => 'exists:karyawan,id',
+            'catatan'        => 'nullable|string|max:255',
+        ]);
+
+        $ditambah = 0;
+        $sudahAda = 0;
+
+        foreach ($request->karyawan_ids as $id) {
+            $exists = PesertaPelatihan::where('pelatihan_id', $pelatihan->id)
+                ->where('karyawan_id', $id)
+                ->exists();
+
+            if ($exists) {
+                $sudahAda++;
+                continue;
+            }
+
+            PesertaPelatihan::create([
+                'pelatihan_id'  => $pelatihan->id,
+                'karyawan_id'   => $id,
+                'ditunjuk_oleh' => Auth::id(),
+                'catatan'       => $request->catatan,
+            ]);
+            $ditambah++;
+        }
+
+        $pesan = "{$ditambah} peserta berhasil ditambahkan.";
+        if ($sudahAda > 0) {
+            $pesan .= " {$sudahAda} sudah terdaftar sebelumnya.";
+        }
+
+        return back()->with('success', $pesan);
+    }
+
+    // ================================================================
+    // HAPUS PESERTA
+    // ================================================================
+    public function hapusPeserta(Pelatihan $pelatihan, Karyawan $karyawan)
+    {
+        if ($pelatihan->status !== 'aktif' && $pelatihan->status !== 'selesai') {
+            return back()->with('error', 'Pelatihan sudah dibatalkan. Daftar peserta tidak dapat diubah.');
+        }
+
+        PesertaPelatihan::where('pelatihan_id', $pelatihan->id)
+            ->where('karyawan_id', $karyawan->id)
+            ->delete();
+
+        return back()->with('success', "{$karyawan->nama_lengkap} dihapus dari daftar peserta.");
+    }
+
+    // ================================================================
+    // SIMPAN NILAI BULK
+    // ================================================================
+    public function simpanNilaiBulk(Request $request, Pelatihan $pelatihan)
+    {
+        if ($pelatihan->status !== 'selesai') {
+            return back()->with('error', 'Nilai hanya bisa diinput setelah pelatihan selesai.');
+        }
+
+        $request->validate([
+            'nomor_sertifikat'      => 'nullable|string|max:100',
+            'tanggal_surat'         => 'nullable|date',
+            'ditandatangani_oleh'   => 'nullable|string|max:150',
+            'jabatan_penandatangan' => 'nullable|string|max:150',
+            'karyawan_ids'          => 'required|array|min:1',
+            'karyawan_ids.*'        => 'exists:karyawan,id',
+            'nilai_pretest'         => 'nullable|array',
+            'nilai_postest'         => 'nullable|array',
+        ]);
+
+        $tersimpan = 0;
+        $lulus     = 0;
+        $tidak     = 0;
+
+        foreach ($request->karyawan_ids as $kid) {
+            $pre  = $request->input("nilai_pretest.{$kid}");
+            $post = $request->input("nilai_postest.{$kid}");
+
+            if ($post === null || $post === '') continue;
+
+            $pre  = ($pre === '' || $pre === null) ? null : (float) $pre;
+            $post = (float) $post;
+            if ($post < 0 || $post > 10) continue;
+            if ($pre !== null && ($pre < 0 || $pre > 10)) $pre = null;
+
+            $status = $post >= 8 ? 'lulus' : 'tidak_lulus';
+            if ($status === 'lulus') $lulus++; else $tidak++;
+
+            SertifikasiKaryawan::updateOrCreate(
+                [
+                    'karyawan_id'   => $kid,
+                    'pelatihan_id'  => $pelatihan->id,
+                    'tanggal_mulai' => $pelatihan->tanggal_mulai->toDateString(),
+                ],
+                [
+                    'tanggal_selesai'       => $pelatihan->tanggal_selesai?->toDateString(),
+                    'nilai_pretest'         => $pre,
+                    'nilai_postest'         => $post,
+                    'nomor_sertifikat'      => $request->nomor_sertifikat ?: null,
+                    'tanggal_surat'         => $request->tanggal_surat ?: null,
+                    'ditandatangani_oleh'   => $request->ditandatangani_oleh ?: null,
+                    'jabatan_penandatangan' => $request->jabatan_penandatangan ?: null,
+                    'status'                => $status,
+                    'diinput_oleh'          => Auth::id(),
+                ]
+            );
+
+            $tersimpan++;
+        }
+
+        return back()->with('success',
+            "{$tersimpan} nilai tersimpan. Lulus: {$lulus}, Tidak Lulus: {$tidak}.");
+    }
+
+    // ================================================================
+    // HAPUS SERTIFIKASI
+    // ================================================================
+    public function hapusSertifikasi(Pelatihan $pelatihan, SertifikasiKaryawan $sertifikasi)
+    {
+        $sertifikasi->delete();
+        return back()->with('success', 'Data nilai pretest & postest dihapus.');
+    }
+
+    // ================================================================
+    // CETAK SEMUA SERTIFIKAT (Multi-page per Pelatihan)
+    // ================================================================
+    public function cetakSemuaSertifikat(Pelatihan $pelatihan)
+    {
+        $sertifikasis = $pelatihan->sertifikasi()
+            ->where('status', 'lulus')
+            ->with(['karyawan.jabatan', 'karyawan.departemen'])
+            ->get();
+
+        if ($sertifikasis->isEmpty()) {
+            return back()->with('error', 'Belum ada peserta yang lulus. Input nilai dulu dengan postest ≥ 8.');
+        }
+
+        Carbon::setLocale('id');
+
+        $pdf = Pdf::loadView('pelatihan.sertifikat-multiple-pdf', [
+            'pelatihan'    => $pelatihan,
+            'sertifikasis' => $sertifikasis,
+        ])->setPaper('a4', 'landscape');
+
+        $namaFile = 'Sertifikat-' . str_replace(' ', '-', $pelatihan->nama_pelatihan) . '.pdf';
+
+        return $pdf->stream($namaFile);
+    }
+
+    // ================================================================
+    // CETAK 1 SERTIFIKAT (Untuk halaman Karyawan)
+    // ================================================================
+    public function cetakSertifikat(SertifikasiKaryawan $sertifikasi)
+    {
+        // Pastikan yang dicetak adalah yang lulus
+        if ($sertifikasi->status !== 'lulus') {
+            abort(403, 'Sertifikat hanya tersedia untuk peserta yang lulus.');
+        }
+
+        // Load relasi yang dibutuhkan
+        $sertifikasi->load(['karyawan.jabatan', 'karyawan.departemen', 'pelatihan']);
+        $pelatihan = $sertifikasi->pelatihan;
+
+        Carbon::setLocale('id');
+
+        // Bungkus dalam bentuk array/collection (walau isinya 1) agar cocok dengan view 'sertifikat-multiple-pdf'
+        $sertifikasis = collect([$sertifikasi]);
+
+        $pdf = Pdf::loadView('pelatihan.sertifikat-multiple-pdf', [
+            'pelatihan'    => $pelatihan,
+            'sertifikasis' => $sertifikasis,
+        ])->setPaper('a4', 'landscape');
+
+        $namaFile = 'Sertifikat-' . str_replace(' ', '-', $sertifikasi->karyawan->nama_lengkap) . '.pdf';
+
+        return $pdf->stream($namaFile);
+    }
+
+    // ================================================================
+    // EXPORT EXCEL PESERTA
     // ================================================================
     public function exportPesertaExcel(Pelatihan $pelatihan)
     {
@@ -254,7 +500,7 @@ class PelatihanController extends Controller
     }
 
     // ================================================================
-    // EXPORT PESERTA PER PELATIHAN — PDF (inline HTML)
+    // EXPORT PDF PESERTA
     // ================================================================
     public function exportPesertaPdf(Pelatihan $pelatihan)
     {
@@ -438,196 +684,5 @@ class PelatihanController extends Controller
         $pdf = Pdf::loadHTML($html)->setPaper('a4', 'landscape');
 
         return $pdf->download('Peserta-' . str_replace(' ', '-', $pelatihan->nama_pelatihan) . '-' . now()->format('Ymd-His') . '.pdf');
-    }
-
-    // ================================================================
-    // CRUD
-    // ================================================================
-    public function store(Request $request)
-    {
-        $request->validate([
-            'nama_pelatihan'  => 'required|string|max:150',
-            'penyelenggara'   => 'nullable|string|max:150',
-            'kategori'        => 'required|in:sertifikasi,pelatihan_internal,pelatihan_eksternal',
-            'tanggal_mulai'   => 'required|date',
-            'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_mulai',
-            'deskripsi'       => 'nullable|string',
-        ]);
-
-        Pelatihan::create([
-            ...$request->only([
-                'nama_pelatihan', 'penyelenggara', 'kategori',
-                'tanggal_mulai', 'tanggal_selesai', 'deskripsi',
-            ]),
-            'dibuat_oleh' => Auth::id(),
-        ]);
-
-        return back()->with('success', 'Pelatihan berhasil ditambahkan.');
-    }
-
-    public function update(Request $request, Pelatihan $pelatihan)
-    {
-        $request->validate([
-            'nama_pelatihan'  => 'required|string|max:150',
-            'penyelenggara'   => 'nullable|string|max:150',
-            'kategori'        => 'required|in:sertifikasi,pelatihan_internal,pelatihan_eksternal',
-            'tanggal_mulai'   => 'required|date',
-            'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_mulai',
-            'deskripsi'       => 'nullable|string',
-            'status'          => 'required|in:aktif,selesai,dibatalkan',
-        ]);
-
-        $pelatihan->update($request->only([
-            'nama_pelatihan', 'penyelenggara', 'kategori',
-            'tanggal_mulai', 'tanggal_selesai', 'deskripsi', 'status',
-        ]));
-
-        return back()->with('success', 'Pelatihan berhasil diperbarui.');
-    }
-
-    public function destroy(Pelatihan $pelatihan)
-    {
-        $pelatihan->delete();
-        return back()->with('success', 'Pelatihan dihapus.');
-    }
-
-    public function tambahPeserta(Request $request, Pelatihan $pelatihan)
-    {
-        if ($pelatihan->status !== 'aktif') {
-            return back()->with('error', 'Pelatihan sudah ' . $pelatihan->status . '. Daftar peserta tidak dapat diubah.');
-        }
-
-        $request->validate([
-            'karyawan_ids'   => 'required|array|min:1',
-            'karyawan_ids.*' => 'exists:karyawan,id',
-            'catatan'        => 'nullable|string|max:255',
-        ]);
-
-        $ditambah = 0;
-        $sudahAda = 0;
-
-        foreach ($request->karyawan_ids as $id) {
-            $exists = PesertaPelatihan::where('pelatihan_id', $pelatihan->id)
-                ->where('karyawan_id', $id)
-                ->exists();
-
-            if ($exists) { $sudahAda++; continue; }
-
-            PesertaPelatihan::create([
-                'pelatihan_id'  => $pelatihan->id,
-                'karyawan_id'   => $id,
-                'ditunjuk_oleh' => Auth::id(),
-                'catatan'       => $request->catatan,
-            ]);
-            $ditambah++;
-        }
-
-        $pesan = "{$ditambah} peserta berhasil ditambahkan.";
-        if ($sudahAda > 0) $pesan .= " {$sudahAda} sudah terdaftar sebelumnya.";
-
-        return back()->with('success', $pesan);
-    }
-
-    public function hapusPeserta(Pelatihan $pelatihan, Karyawan $karyawan)
-    {
-        if ($pelatihan->status !== 'aktif') {
-            return back()->with('error', 'Pelatihan sudah ' . $pelatihan->status . '. Daftar peserta tidak dapat diubah.');
-        }
-
-        PesertaPelatihan::where('pelatihan_id', $pelatihan->id)
-            ->where('karyawan_id', $karyawan->id)
-            ->delete();
-
-        return back()->with('success', "{$karyawan->nama_lengkap} dihapus dari daftar peserta.");
-    }
-
-    public function simpanNilaiBulk(Request $request, Pelatihan $pelatihan)
-    {
-        if ($pelatihan->status !== 'selesai') {
-            return back()->with('error', 'Nilai hanya bisa diinput setelah pelatihan selesai.');
-        }
-
-        $request->validate([
-            'nomor_sertifikat'      => 'nullable|string|max:100',
-            'tanggal_surat'         => 'nullable|date',
-            'ditandatangani_oleh'   => 'nullable|string|max:150',
-            'jabatan_penandatangan' => 'nullable|string|max:150',
-            'karyawan_ids'          => 'required|array|min:1',
-            'karyawan_ids.*'        => 'exists:karyawan,id',
-            'nilai_pretest'         => 'nullable|array',
-            'nilai_postest'         => 'nullable|array',
-        ]);
-
-        $tersimpan = 0;
-        $lulus     = 0;
-        $tidak     = 0;
-
-        foreach ($request->karyawan_ids as $kid) {
-            $pre  = $request->input("nilai_pretest.{$kid}");
-            $post = $request->input("nilai_postest.{$kid}");
-
-            if ($post === null || $post === '') continue;
-
-            $pre  = ($pre === '' || $pre === null) ? null : (float) $pre;
-            $post = (float) $post;
-            if ($post < 0 || $post > 10) continue;
-            if ($pre !== null && ($pre < 0 || $pre > 10)) $pre = null;
-
-            $status = $post >= 8 ? 'lulus' : 'tidak_lulus';
-            if ($status === 'lulus') $lulus++; else $tidak++;
-
-            SertifikasiKaryawan::updateOrCreate(
-                [
-                    'karyawan_id'   => $kid,
-                    'pelatihan_id'  => $pelatihan->id,
-                    'tanggal_mulai' => $pelatihan->tanggal_mulai->toDateString(),
-                ],
-                [
-                    'tanggal_selesai'       => $pelatihan->tanggal_selesai?->toDateString(),
-                    'nilai_pretest'         => $pre,
-                    'nilai_postest'         => $post,
-                    'nomor_sertifikat'      => $request->nomor_sertifikat ?: null,
-                    'tanggal_surat'         => $request->tanggal_surat ?: null,
-                    'ditandatangani_oleh'   => $request->ditandatangani_oleh ?: null,
-                    'jabatan_penandatangan' => $request->jabatan_penandatangan ?: null,
-                    'status'                => $status,
-                    'diinput_oleh'          => Auth::id(),
-                ]
-            );
-
-            $tersimpan++;
-        }
-
-        return back()->with('success',
-            "{$tersimpan} nilai tersimpan. Lulus: {$lulus}, Tidak Lulus: {$tidak}.");
-    }
-
-    public function hapusSertifikasi(Pelatihan $pelatihan, SertifikasiKaryawan $sertifikasi)
-    {
-        $sertifikasi->delete();
-        return back()->with('success', 'Data nilai pretest & postest dihapus.');
-    }
-
-    public function cetakSemuaSertifikat(Pelatihan $pelatihan)
-    {
-        $sertifikasis = $pelatihan->sertifikasi()
-            ->where('status', 'lulus')
-            ->with(['karyawan.jabatan', 'karyawan.departemen'])
-            ->get();
-
-        if ($sertifikasis->isEmpty()) {
-            return back()->with('error', 'Belum ada peserta yang lulus. Input nilai dulu dengan postest ≥ 8.');
-        }
-
-        Carbon::setLocale('id');
-
-        $pdf = Pdf::loadView('pelatihan.sertifikat-multiple-pdf', [
-            'pelatihan'    => $pelatihan,
-            'sertifikasis' => $sertifikasis,
-        ])->setPaper('a4', 'landscape');
-
-        $namaFile = 'Sertifikat-' . str_replace(' ', '-', $pelatihan->nama_pelatihan) . '.pdf';
-
-        return $pdf->stream($namaFile);
     }
 }

@@ -25,7 +25,8 @@
         'Aktivitas Saya' => [
             ['label' => 'Aktivitas', 'icon' => 'bi-check2-square', 'route' => null, 'aktif' => []],
             ['label' => 'Absensi', 'icon' => 'bi-calendar-check', 'route' => 'absensi.karyawan', 'aktif' => ['absensi.karyawan']],
-            ['label' => 'Pelatihan', 'icon' => 'bi-mortarboard', 'route' => null, 'aktif' => []],
+            // ⬇️ PERUBAHAN DI SINI ⬇️
+            ['label' => 'Pelatihan', 'icon' => 'bi-mortarboard', 'route' => 'pelatihan.karyawan', 'aktif' => ['pelatihan.karyawan']],
             ['label' => 'Profil Saya', 'icon' => 'bi-person-circle', 'route' => 'profil.karyawan', 'aktif' => ['profil.karyawan']],
         ],
     ];

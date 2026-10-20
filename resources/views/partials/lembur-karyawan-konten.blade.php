@@ -1,106 +1,93 @@
 @once
 <style>
-    .kartu-lembur { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1rem; }
-    .badge-lembur { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+    .kartu-lembur { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.2rem; transition: all 0.2s; }
+    .kartu-lembur:hover { border-color: #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+    .badge-lembur { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 20px; font-size: .75rem; font-weight: 700; white-space: nowrap; }
+    .timeline-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
 </style>
 @endonce
 
 @php
     $statusLembur = [
-        'menunggu' => ['warna' => '#f59e0b', 'label' => 'Menunggu'],
-        'disetujui' => ['warna' => '#16a34a', 'label' => 'Disetujui'],
-        'ditolak' => ['warna' => '#ef4444', 'label' => 'Ditolak'],
+        'menunggu' => ['warna' => '#f59e0b', 'bg' => '#fffbeb', 'label' => 'Menunggu Validasi', 'icon' => 'bi-hourglass-split'],
+        'disetujui' => ['warna' => '#16a34a', 'bg' => '#f0fdf4', 'label' => 'Disetujui', 'icon' => 'bi-check-circle-fill'],
+        'ditolak' => ['warna' => '#ef4444', 'bg' => '#fef2f2', 'label' => 'Ditolak', 'icon' => 'bi-x-circle-fill'],
     ];
 @endphp
 
-@if (session('success'))
-    <div class="alert alert-success py-2 px-3 mb-3" style="font-size:.82rem; border-radius:12px;">{{ session('success') }}</div>
-@endif
-@if (session('error'))
-    <div class="alert alert-danger py-2 px-3 mb-3" style="font-size:.82rem; border-radius:12px;">{{ session('error') }}</div>
-@endif
-@if ($errors->any())
-    <div class="alert alert-danger py-2 px-3 mb-3" style="font-size:.82rem; border-radius:12px;">{{ $errors->first() }}</div>
-@endif
-
-<form method="POST" action="{{ route('lembur.karyawan.store') }}" class="kartu-lembur mb-4">
-    @csrf
-    <div class="fw-bold mb-2" style="color:#1e293b;">Ajukan Lembur</div>
-
-    <label class="form-label small fw-bold">Tanggal</label>
-    <input type="date" name="tanggal" class="form-control mb-2"
-        value="{{ old('tanggal', now()->toDateString()) }}"
-        min="{{ now()->toDateString() }}" required>
-
-    <label class="form-label small fw-bold">Alasan / pekerjaan</label>
-    <textarea name="catatan" rows="2" maxlength="255" class="form-control mb-2"
-        placeholder="Misal: mesin 2 rusak, perbaikan" required>{{ old('catatan') }}</textarea>
-
-    <label class="form-label small fw-bold">Estimasi Lembur</label>
-    <div class="input-group mb-2">
-        <input type="number" name="estimasi_jam" class="form-control"
-            value="{{ old('estimasi_jam') }}"
-            min="0.5" max="12" step="0.5"
-            placeholder="Contoh: 2, 2.5, 3" required>
-        <span class="input-group-text">jam</span>
+{{-- Banner Informasi --}}
+<div class="alert alert-info d-flex align-items-center gap-3 mb-4" style="border-radius: 14px; font-size: 0.85rem; background-color: #eff6ff; border-color: #bfdbfe; color: #1e40af;">
+    <i class="bi bi-info-circle-fill fs-5"></i>
+    <div>
+        <strong>Informasi:</strong> Pengajuan lembur saat ini dikelola langsung oleh <strong>Kepala Bagian</strong>. 
+        Halaman ini hanya menampilkan jadwal dan riwayat lembur Anda.
     </div>
-    <div class="form-text mb-3" style="font-size:.74rem;">
-        Estimasi ini hanya informasi untuk payroll, tidak mempengaruhi perhitungan upah.
-    </div>
+</div>
 
-    <p class="text-muted mb-3" style="font-size:.74rem;">
-        Jam mulai dihitung setelah jam pulang shift. Jam selesai otomatis dari absen pulangmu.
-        Besoknya, serahkan surat lembur ke payroll untuk dicocokkan.
-    </p>
-    <button type="submit" class="btn btn-biru w-100" style="border-radius:12px;">Ajukan Lembur</button>
-</form>
-
-<div class="fw-bold mb-2" style="color:#1e293b;">Riwayat</div>
+<div class="fw-bold mb-3" style="color:#1e293b; font-size: 1.1rem;">Jadwal & Riwayat Lembur</div>
 
 @forelse ($riwayat as $l)
     @php $st = $statusLembur[$l->status] ?? $statusLembur['menunggu']; @endphp
-    <div class="kartu-lembur mb-2">
-        {{-- di dalam @forelse ($riwayat as $l) --}}
-<div class="d-flex justify-content-between align-items-start gap-2">
-    <div>
-        <div class="fw-bold" style="font-size:.88rem;">
-            {{ \Carbon\Carbon::parse($l->tanggal)->translatedFormat('l, d M Y') }}
-        </div>
-        <div class="text-muted" style="font-size:.78rem;">
-            {{ $l->jam_mulai ? substr($l->jam_mulai, 0, 5) : '--:--' }}
-            &ndash;
-            {{ $l->jam_selesai ? substr($l->jam_selesai, 0, 5) : 'belum selesai' }}
-            @if($l->durasi_final_jam) &middot; {{ $l->durasi_final_jam }} jam @endif
-        </div>
-        @if($l->estimasi_jam)
-            <div style="font-size:.74rem; color:#94a3b8;">
-                <i class="bi bi-clock me-1"></i>Estimasi: {{ $l->estimasi_jam }} jam
+    
+    <div class="kartu-lembur mb-3">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            
+            {{-- Info Kiri --}}
+            <div class="flex-grow-1">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="timeline-dot" style="background: {{ $st['warna'] }};"></span>
+                    <div class="fw-bold" style="font-size:.95rem; color: #1e293b;">
+                        {{ \Carbon\Carbon::parse($l->tanggal)->translatedFormat('l, d F Y') }}
+                    </div>
+                </div>
+                
+                <div class="text-muted mb-2" style="font-size:.85rem; margin-left: 18px;">
+                    <i class="bi bi-clock me-1"></i>
+                    {{ $l->jam_mulai ? substr($l->jam_mulai, 0, 5) : '--:--' }}
+                    <span class="mx-1">&ndash;</span>
+                    {{ $l->jam_selesai ? substr($l->jam_selesai, 0, 5) : 'Belum Selesai' }}
+                    
+                    @if($l->durasi_final_jam) 
+                        <span class="badge bg-light text-dark border ms-2">{{ $l->durasi_final_jam }} Jam</span>
+                    @elseif($l->estimasi_jam)
+                        <span class="badge bg-light text-dark border ms-2">Est. {{ $l->estimasi_jam }} Jam</span>
+                    @endif
+                </div>
+
+                {{-- Alasan / Catatan --}}
+                <div class="p-2 rounded mb-2" style="background: #f8fafc; border: 1px solid #e2e8f0; font-size:.82rem; margin-left: 18px;">
+                    <i class="bi bi-briefcase text-muted me-1"></i> {{ $l->catatan }}
+                </div>
+
+                {{-- Catatan Payroll --}}
+                @if ($l->catatan_payroll)
+                    <div class="mt-2" style="font-size:.78rem; color:#475569; margin-left: 18px;">
+                        <i class="bi bi-chat-left-text text-primary me-1"></i> 
+                        <strong>Payroll:</strong> {{ $l->catatan_payroll }}
+                    </div>
+                @endif
             </div>
-        @endif
-    </div>
-    <span class="badge-lembur" style="background: {{ $st['warna'] }}1a; color: {{ $st['warna'] }};">
-        {{ $st['label'] }}
-    </span>
-</div>
 
-        @if ($l->status === 'disetujui' && $l->total_upah)
-            <div class="mt-1" style="font-size:.78rem; color:#16a34a; font-weight:600;">Rp {{ number_format($l->total_upah, 0, ',', '.') }}</div>
-        @endif
-
-        <div class="mt-2 text-muted" style="font-size:.78rem;">{{ $l->catatan }}</div>
-
-        @if ($l->catatan_payroll)
-            <div class="mt-1" style="font-size:.76rem; color:#475569;"><i class="bi bi-chat-left-text me-1"></i>Payroll: {{ $l->catatan_payroll }}</div>
-        @endif
-
-        @if ($l->status === 'menunggu' && ! $l->presensi_id)
-            <form method="POST" action="{{ route('lembur.karyawan.batal', $l->id) }}" class="mt-2" onsubmit="return confirm('Batalkan pengajuan lembur ini?')">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="btn btn-sm btn-light" style="border-radius:10px; color:#ef4444;">Batalkan</button>
-            </form>
-        @endif
+            {{-- Status Kanan --}}
+            <div class="text-end">
+                <span class="badge-lembur" style="background: {{ $st['bg'] }}; color: {{ $st['warna'] }}; border: 1px solid {{ $st['warna'] }}40;">
+                    <i class="bi {{ $st['icon'] }} me-1"></i> {{ $st['label'] }}
+                </span>
+                
+                @if ($l->status === 'disetujui' && $l->total_upah)
+                    <div class="mt-2" style="font-size:.85rem; color:#16a34a; font-weight:800;">
+                        Rp {{ number_format($l->total_upah, 0, ',', '.') }}
+                    </div>
+                @endif
+            </div>
+        </div>
     </div>
 @empty
-    <div class="kartu-lembur text-center text-muted" style="font-size:.85rem;">Belum ada pengajuan lembur.</div>
+    <div class="kartu-lembur text-center py-5">
+        <div class="d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px; background: #f1f5f9; border-radius: 50%;">
+            <i class="bi bi-calendar-x fs-2 text-muted"></i>
+        </div>
+        <h6 class="fw-bold text-dark mb-1">Belum Ada Jadwal Lembur</h6>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Anda belum memiliki jadwal atau riwayat lembur saat ini.</p>
+    </div>
 @endforelse
