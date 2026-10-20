@@ -232,4 +232,52 @@ class PayrollController extends Controller
         TarifLembur::findOrFail($id)->delete();
         return back()->with('success', 'Tarif dihapus.');
     }
+    
+    public function rekapDepartemen(Request $request)
+{
+    Carbon::setLocale('id');
+
+    $bulan = $request->query('bulan')
+        ? Carbon::createFromFormat('Y-m', $request->query('bulan'))->startOfMonth()
+        : Carbon::now()->startOfMonth();
+
+    $awal  = $bulan->toDateString();
+    $akhir = $bulan->copy()->endOfMonth()->toDateString();
+
+    $rekap = Lembur::with(['karyawan.departemen'])
+        ->whereBetween('tanggal', [$awal, $akhir])
+        ->where('status', 'disetujui')
+        ->get()
+        ->groupBy(fn($l) => $l->karyawan->departemen->nama_departemen ?? 'Tanpa Departemen')
+        ->map(function ($items, $namaDept) {
+            return [
+                'nama_departemen' => $namaDept,
+                'jumlah_karyawan' => $items->pluck('karyawan_id')->unique()->count(),
+                'total_jam'       => $items->sum('durasi_final_jam'),
+                'total_upah'      => $items->sum('total_upah'),
+                'detail'          => $items->groupBy('karyawan_id')->map(function ($baris) {
+                    return [
+                        'karyawan'   => $baris->first()->karyawan,
+                        'total_jam'  => $baris->sum('durasi_final_jam'),
+                        'total_upah' => $baris->sum('total_upah'),
+                        'lemburs'    => $baris,
+                    ];
+                })->values(),
+            ];
+        })
+        ->sortByDesc('total_upah')
+        ->values();
+
+    $grandTotal     = $rekap->sum('total_upah');
+    $totalJamSemua  = $rekap->sum('total_jam');
+
+    return view('payroll.rekap-departemen', [
+        'rekap'           => $rekap,
+        'grandTotal'      => $grandTotal,
+        'totalJamSemua'   => $totalJamSemua,
+        'bulan'           => $bulan,
+        'bulanSebelumnya' => $bulan->copy()->subMonth()->format('Y-m'),
+        'bulanBerikutnya' => $bulan->copy()->addMonth()->format('Y-m'),
+    ]);
+}
 }

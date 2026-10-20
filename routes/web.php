@@ -13,6 +13,7 @@ use App\Http\Controllers\ShiftHrdController;
 use App\Http\Controllers\LemburKaryawanController;
 use App\Http\Controllers\LemburPayrollController;
 use App\Http\Controllers\PelatihanController;
+use App\Http\Controllers\lemburKepalaController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -127,6 +128,9 @@ Route::middleware(['auth', 'role:karyawan,hrd', 'kepala.bagian'])->group(functio
     Route::get('/shift-tim', [ShiftTimController::class, 'index'])->name('shift-tim.index');
     Route::post('/shift-tim', [ShiftTimController::class, 'store'])->name('shift-tim.store');
     Route::post('/shift-tim/tukar', [ShiftTimController::class, 'tukar'])->name('shift-tim.tukar');
+    Route::get('/lembur-kepala', [App\Http\Controllers\LemburKepalaController::class, 'index'])->name('lembur.kepala');
+    Route::post('/lembur-kepala', [App\Http\Controllers\LemburKepalaController::class, 'store'])->name('lembur.kepala.store');
+    Route::delete('/lembur-kepala/{id}', [App\Http\Controllers\LemburKepalaController::class, 'batal'])->name('lembur.kepala.batal');
 });
 
 // --- Lembur sisi karyawan & payroll ---
@@ -135,6 +139,7 @@ Route::middleware(['auth', 'role:karyawan,hrd'])->group(function () {
     Route::post('/lembur-karyawan', [LemburKaryawanController::class, 'store'])->name('lembur.karyawan.store');
     Route::delete('/lembur-karyawan/{id}', [LemburKaryawanController::class, 'batal'])->name('lembur.karyawan.batal');
     Route::get('/pelatihan-saya', [App\Http\Controllers\PelatihanKaryawanController::class, 'index'])->name('pelatihan.karyawan');
+    Route::get('/lembur-saya', [App\Http\Controllers\LemburKaryawanController::class, 'index'])->name('lembur.karyawan');
 });
 
 Route::middleware(['auth', 'role:karyawan,hrd', 'hak:payroll'])->group(function () {
@@ -150,4 +155,5 @@ Route::middleware(['auth', 'role:karyawan,hrd', 'hak:payroll'])->group(function 
     Route::get('/payroll/tarif', [App\Http\Controllers\PayrollController::class, 'tarifIndex'])->name('payroll.tarif');
     Route::post('/payroll/tarif', [App\Http\Controllers\PayrollController::class, 'tarifStore'])->name('payroll.tarif.store');
     Route::delete('/payroll/tarif/{id}', [App\Http\Controllers\PayrollController::class, 'destroy'])->name('payroll.tarif.destroy');
+    Route::get('/payroll/rekap-departemen', [App\Http\Controllers\PayrollController::class, 'rekapDepartemen'])->name('payroll.rekap.departemen');
 });

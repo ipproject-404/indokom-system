@@ -28,12 +28,10 @@ class Karyawan extends Model
         'tipe_karyawan_id',
         'shift_id',
         'pakai_jadwal_shift',
-        'boleh_lembur',
     ];
 
     protected $casts = [
         'pakai_jadwal_shift' => 'boolean',
-        'boleh_lembur' => 'boolean',
     ];
 
     public function jabatan()
