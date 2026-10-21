@@ -28,7 +28,6 @@
     <div class="alert alert-danger py-2 px-3 mb-3" style="font-size:.82rem; border-radius:12px;">{{ $errors->first() }}</div>
 @endif
 
-{{-- Form Pengajuan --}}
 <form method="POST" action="{{ route('lembur.kepala.store') }}" class="kartu mb-4">
     @csrf
     <div class="fw-bold mb-3" style="color:#1e293b;">Ajukan Lembur Anak Buah</div>
@@ -67,7 +66,6 @@
     </button>
 </form>
 
-{{-- Riwayat --}}
 <div class="fw-bold mb-2" style="color:#1e293b;">Riwayat Pengajuan</div>
 
 @forelse($riwayat as $l)

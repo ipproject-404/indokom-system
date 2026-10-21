@@ -18,7 +18,7 @@ class Karyawan extends Model
         'jenis_kelamin',
         'alamat',
         'no_hp',
-        'status_pernikahan',   // ⬅️⬅️⬅️ TAMBAHKAN BARIS INI
+        'status_pernikahan',   
         'pendidikan',
         'jabatan_id',
         'departemen_id',

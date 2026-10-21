@@ -18,7 +18,7 @@
             : ['icon' => 'bi-award', 'label' => 'Talent', 'warna' => '#ec4899', 'link' => '#'],
         ['icon' => 'bi-file-earmark-text', 'label' => 'Report', 'warna' => '#2563eb', 'link' => '#'],
         ['icon' => 'bi-grid-3x3-gap', 'label' => 'Spaces', 'warna' => '#f97316', 'link' => '#'],
-                ['icon' => 'bi-clock-history', 'label' => 'Lembur', 'warna' => '#16a34a', 'link' => $karyawan?->boleh_lembur ? route('lembur.karyawan') : '#'],
+                ['icon' => 'bi-clock-history', 'label' => 'Lembur', 'warna' => '#16a34a', 'link' => route('lembur.karyawan')],
         ['icon' => 'bi-cash-coin', 'label' => 'Reimburse', 'warna' => '#ec4899', 'link' => '#'],
         ['icon' => 'bi-car-front', 'label' => 'Fasilitas', 'warna' => '#2563eb', 'link' => '#'],
     ];

@@ -233,7 +233,7 @@ class PayrollController extends Controller
         return back()->with('success', 'Tarif dihapus.');
     }
     
-    public function rekapDepartemen(Request $request)
+   public function rekapDepartemen(Request $request)
 {
     Carbon::setLocale('id');
 
@@ -268,8 +268,8 @@ class PayrollController extends Controller
         ->sortByDesc('total_upah')
         ->values();
 
-    $grandTotal     = $rekap->sum('total_upah');
-    $totalJamSemua  = $rekap->sum('total_jam');
+    $grandTotal    = $rekap->sum('total_upah');
+    $totalJamSemua = $rekap->sum('total_jam');
 
     return view('payroll.rekap-departemen', [
         'rekap'           => $rekap,

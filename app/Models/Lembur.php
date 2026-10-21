@@ -25,29 +25,18 @@ class Lembur extends Model
         return $this->belongsTo(User::class, 'disetujui_oleh');
     }
 
-    /**
-     * Apakah karyawan ini termasuk insentif (jabatan mengandung "Asisten" ke atas).
-     * Karyawan insentif tidak bisa diajukan lembur.
-     */
     public static function adalahInsentif(Karyawan $karyawan): bool
     {
         $namaJabatan = strtolower($karyawan->jabatan->nama_jabatan ?? '');
         return str_contains($namaJabatan, 'asisten');
     }
 
-    /**
-     * Bulatkan durasi: selisih scan vs ajuan ≤ 15 menit → pakai ajuan.
-     * Selisih > 15 menit → hitung dari scan.
-     */
     public static function bulatkanDurasi(float $durasiScanJam, float $durasiAjuanJam): float
     {
         $selisihMenit = abs($durasiScanJam - $durasiAjuanJam) * 60;
         return $selisihMenit <= 15 ? $durasiAjuanJam : round($durasiScanJam, 2);
     }
 
-    /**
-     * Hitung ulang durasi dan upah. Dipanggil saat acc oleh payroll.
-     */
     public function hitungUlang(): void
     {
         if (! $this->jam_mulai || ! $this->jam_selesai) {
@@ -74,15 +63,12 @@ class Lembur extends Model
             $this->tarif_per_jam = 0;
             $this->total_upah    = TarifLembur::hitungUpah(
                 $karyawan->departemen_id,
-                'reguler', // semua lembur sekarang reguler
+                'reguler',
                 $durasi
             );
         }
     }
 
-    /**
-     * Isi jam selesai dari scan pulang.
-     */
     public static function isiDariPresensi(Presensi $presensi): void
     {
         $lembur = static::where('karyawan_id', $presensi->karyawan_id)

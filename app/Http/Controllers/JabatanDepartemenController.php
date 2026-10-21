@@ -50,24 +50,16 @@ class JabatanDepartemenController extends Controller
         'nama_departemen'    => 'required|string|max:255|unique:departemen,nama_departemen,' . $id,
         'divisi_id'          => 'required|exists:divisi,id',
         'kepala_karyawan_id' => 'nullable|exists:karyawan,id,departemen_id,' . $id,
-        'boleh_lembur'       => 'nullable|boolean',
     ]);
 
     $departemen = Departemen::findOrFail($id);
-    $bolehLemburBaru = $request->boolean('boleh_lembur');
-    $berubah = $departemen->boleh_lembur !== $bolehLemburBaru;
 
     $departemen->update([
         'nama_departemen'    => $request->nama_departemen,
         'divisi_id'          => $request->divisi_id,
         'kepala_karyawan_id' => $request->kepala_karyawan_id ?: null,
-        'boleh_lembur'       => $bolehLemburBaru,
     ]);
 
-    // Sinkron semua karyawan di departemen ini kalau boleh_lembur berubah
-    if ($berubah) {
-        $departemen->karyawan()->update(['boleh_lembur' => $bolehLemburBaru]);
-    }
 
     return redirect()->route('jabatan.departemen.index')
         ->with('success', 'Data departemen berhasil diperbarui!' .

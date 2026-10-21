@@ -53,11 +53,9 @@ if ($isKepalaSb) {
 }
 
 // Menu lembur saya untuk semua karyawan (hanya lihat)
-// Ganti kondisi boleh_lembur jadi tampil untuk semua
 array_splice($bagianSb['Aktivitas Saya'], 3, 0, [
     ['label' => 'Lembur Saya', 'icon' => 'bi-clock', 'route' => 'lembur.karyawan', 'aktif' => ['lembur.karyawan']],
 ]);
-
     // Menu payroll hanya untuk yang punya hak payroll.
     if ($karyawanSb && $karyawanSb->punyaHak('payroll')) {
     $bagianSb['Payroll'] = [

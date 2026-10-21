@@ -10,10 +10,6 @@ use Illuminate\Support\Facades\Auth;
 
 class LemburKepalaController extends Controller
 {
-    /**
-     * Daftar lembur anak buah + form pengajuan baru.
-     * Karyawan insentif (jabatan mengandung "Asisten") tidak muncul di dropdown.
-     */
     public function index()
     {
         Carbon::setLocale('id');
@@ -21,7 +17,6 @@ class LemburKepalaController extends Controller
         $karyawan        = Auth::user()->karyawan;
         $idDepartemen    = $karyawan->departemenYangDipimpin()->pluck('id');
 
-        // Hanya karyawan reguler (bukan insentif) yang bisa dilemburkan
         $anakBuahReguler = Karyawan::with(['jabatan', 'departemen'])
             ->whereIn('departemen_id', $idDepartemen)
             ->where('status', 'aktif')
@@ -63,7 +58,7 @@ class LemburKepalaController extends Controller
                 ->with('error', "{$karyawan->nama_lengkap} sudah punya pengajuan lembur di tanggal itu.");
         }
 
-        $shift   = $karyawan->shiftPadaTanggal($tanggal);
+        $shift    = $karyawan->shiftPadaTanggal($tanggal);
         $jamMulai = $shift?->waktuPulang($tanggal)->format('H:i:s');
 
         Lembur::create([
@@ -91,9 +86,6 @@ class LemburKepalaController extends Controller
         return back()->with('success', "Pengajuan lembur {$karyawan->nama_lengkap} dibatalkan.");
     }
 
-    /**
-     * Pastikan karyawan ini adalah anak buah reguler dari kepala yang login.
-     */
     private function cekAnakBuahReguler(int $karyawanId): Karyawan
     {
         $idDepartemen = Auth::user()->karyawan->departemenYangDipimpin()->pluck('id');
