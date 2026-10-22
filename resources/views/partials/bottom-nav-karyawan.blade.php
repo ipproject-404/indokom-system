@@ -7,7 +7,10 @@
         ['label' => 'Beranda',   'icon' => 'bi-house-fill',      'route' => 'dashboard.karyawan', 'aktif' => ['dashboard.karyawan']],
         ['label' => 'Aktivitas', 'icon' => 'bi-check2-square',   'route' => null,                 'aktif' => []],
         ['label' => 'Absensi',   'icon' => 'bi-calendar-check',  'route' => 'absensi.karyawan',   'aktif' => ['absensi.karyawan']],
-        ['label' => 'Pelatihan', 'icon' => 'bi-mortarboard',     'route' => null,                 'aktif' => []],
+        
+        // ⬇️ BARIS INI YANG DIPERBAIKI (route diubah dari null menjadi 'pelatihan.karyawan') ⬇️
+        ['label' => 'Pelatihan', 'icon' => 'bi-mortarboard',     'route' => 'pelatihan.karyawan', 'aktif' => ['pelatihan.karyawan']],
+        
         ['label' => 'Profil',    'icon' => 'bi-person-circle',   'route' => 'profil.karyawan',    'aktif' => ['profil.karyawan']],
     ];
 @endphp
