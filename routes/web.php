@@ -104,6 +104,9 @@ Route::middleware(['auth', 'role:hrd'])->group(function () {
     Route::post('/hrd/pelatihan', [PelatihanController::class, 'store'])->name('pelatihan.store');
     Route::put('/hrd/pelatihan/{pelatihan}', [PelatihanController::class, 'update'])->name('pelatihan.update');
     Route::delete('/hrd/pelatihan/{pelatihan}', [PelatihanController::class, 'destroy'])->name('pelatihan.destroy');
+    
+    // ⬇️ ROUTE BARU: TANDAI SELESAI ⬇️
+    Route::patch('/hrd/pelatihan/{pelatihan}/selesai', [PelatihanController::class, 'tandaiSelesai'])->name('pelatihan.selesai');
 
     // Peserta
     Route::post('/hrd/pelatihan/{pelatihan}/peserta', [PelatihanController::class, 'tambahPeserta'])->name('pelatihan.peserta.tambah');

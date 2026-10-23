@@ -111,6 +111,22 @@ class PelatihanController extends Controller
     }
 
     // ================================================================
+    // TANDAI SELESAI — shortcut ubah status aktif ke selesai
+    // ================================================================
+    public function tandaiSelesai(Pelatihan $pelatihan)
+    {
+        if ($pelatihan->status !== 'aktif') {
+            return back()->with('error', 'Hanya pelatihan berstatus aktif yang dapat ditandai selesai.');
+        }
+
+        $pelatihan->update([
+            'status' => 'selesai'
+        ]);
+
+        return back()->with('success', 'Pelatihan berhasil ditandai sebagai Selesai.');
+    }
+
+    // ================================================================
     // TAMBAH PESERTA
     // ================================================================
     public function tambahPeserta(Request $request, Pelatihan $pelatihan)
@@ -160,7 +176,6 @@ class PelatihanController extends Controller
     // ================================================================
     public function tandaiHadir(PesertaPelatihan $peserta)
     {
-        // ⬇️ PERBAIKAN: Izinkan jika status 'aktif' atau 'selesai' ⬇️
         if (!in_array($peserta->pelatihan->status, ['aktif', 'selesai'])) {
             return back()->with('error', 'Kehadiran tidak bisa dicatat pada pelatihan yang dibatalkan.');
         }
@@ -190,7 +205,7 @@ class PelatihanController extends Controller
     }
 
     // ================================================================
-    // SIMPAN NILAI BULK
+    // SIMPAN NILAI BULK (DENGAN VALIDASI KEHADIRAN)
     // ================================================================
     public function simpanNilaiBulk(Request $request, Pelatihan $pelatihan)
     {
@@ -212,8 +227,20 @@ class PelatihanController extends Controller
         $tersimpan = 0;
         $lulus     = 0;
         $tidak     = 0;
+        $absen     = 0; // Tambahan counter untuk yang tidak hadir
 
         foreach ($request->karyawan_ids as $kid) {
+            // ⬇️ VALIDASI: Cek apakah peserta benar-benar HADIR ⬇️
+            $peserta = PesertaPelatihan::where('pelatihan_id', $pelatihan->id)
+                ->where('karyawan_id', $kid)
+                ->first();
+            
+            if (!$peserta || $peserta->status_kehadiran !== 'hadir') {
+                $absen++;
+                continue; // Skip jika belum/tidak hadir
+            }
+            // ⬆️ END VALIDASI ⬆️
+
             $pre  = $request->input("nilai_pretest.{$kid}");
             $post = $request->input("nilai_postest.{$kid}");
 
@@ -249,8 +276,12 @@ class PelatihanController extends Controller
             $tersimpan++;
         }
 
-        return back()->with('success',
-            "{$tersimpan} nilai tersimpan. Lulus: {$lulus}, Tidak Lulus: {$tidak}.");
+        $pesan = "{$tersimpan} nilai tersimpan. Lulus: {$lulus}, Tidak Lulus: {$tidak}.";
+        if ($absen > 0) {
+            $pesan .= " ({$absen} peserta diabaikan karena tidak hadir).";
+        }
+
+        return back()->with('success', $pesan);
     }
 
     // ================================================================

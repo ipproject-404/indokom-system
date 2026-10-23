@@ -105,23 +105,28 @@
             <div class="space-y-4">
                 @forelse($pelatihans as $p)
                 @php
+                    // ⬇️ LOGIKA BARU: Cek apakah tanggal sudah lewat tapi status masih aktif ⬇️
+                    $isExpired = ($p->status === 'aktif') && \Carbon\Carbon::parse($p->tanggal_selesai ?? $p->tanggal_mulai)->endOfDay()->isPast();
+
                     // Logika badge & warna
-                    $warnaBadge = match($p->status) {
-                        'selesai'    => 'bg-gray-100 text-gray-600 border-gray-200',
-                        'dibatalkan' => 'bg-rose-50 text-rose-700 border-rose-200',
-                        default      => $p->sedangBerjalan()
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-blue-50 text-blue-700 border-blue-200',
+                    $warnaBadge = match(true) {
+                        $p->status === 'selesai'    => 'bg-gray-100 text-gray-600 border-gray-200',
+                        $p->status === 'dibatalkan' => 'bg-rose-50 text-rose-700 border-rose-200',
+                        $isExpired                  => 'bg-amber-50 text-amber-700 border-amber-200',
+                        $p->sedangBerjalan()        => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                        default                     => 'bg-blue-50 text-blue-700 border-blue-200',
                     };
                     $ikonStatus = match(true) {
                         $p->status === 'selesai'    => 'bi-check-circle-fill',
                         $p->status === 'dibatalkan' => 'bi-x-circle-fill',
+                        $isExpired                  => 'bi-hourglass-bottom',
                         $p->sedangBerjalan()        => 'bi-play-circle-fill',
                         default                     => 'bi-clock-fill',
                     };
                     $labelStatus = match(true) {
                         $p->status === 'selesai'    => 'Selesai',
                         $p->status === 'dibatalkan' => 'Dibatalkan',
+                        $isExpired                  => 'Waktu Habis',
                         $p->sedangBerjalan()        => 'Sedang Berjalan',
                         default                     => 'Akan Datang',
                     };
@@ -146,6 +151,7 @@
                             'nama'          => $ps->karyawan->nama_lengkap ?? '-',
                             'jabatan'       => $ps->karyawan->jabatan->nama_jabatan ?? '-',
                             'departemen'    => $ps->karyawan->departemen->nama_departemen ?? '-',
+                            'status_kehadiran' => $ps->status_kehadiran, // ⬅️ Tambahan untuk validasi input
                             'nilai_pretest' => $s->nilai_pretest ?? '',
                             'nilai_postest' => $s->nilai_postest ?? '',
                         ];
@@ -198,7 +204,7 @@
                                 <span x-text="bukaDetail ? 'Tutup' : 'Peserta'"></span>
                             </button>
 
-                            {{-- TOMBOL INPUT NILAI (SUDAH DIPERBAIKI) --}}
+                            {{-- TOMBOL INPUT NILAI --}}
                             @if($bisaInputNilai)
                                 <button type="button" 
                                     data-modal='@json($modalData)'
@@ -221,17 +227,31 @@
                                     <i class="bi bi-three-dots-vertical text-lg"></i>
                                 </button>
                                 <div x-show="bukaMenu" x-cloak x-transition
-                                    class="absolute right-0 mt-1 w-40 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-30">
+                                    class="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-30">
+                                    
                                     <button onclick="bukaModalEdit({{ $p->id }}, {{ json_encode($p) }})"
                                         class="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                                         <i class="bi bi-pencil"></i> Edit Pelatihan
                                     </button>
+                                    
+                                    {{-- TOMBOL TANDAI SELESAI --}}
+                                    @if($p->status === 'aktif')
+                                        <button onclick="bukaKonfirmasiSelesai({{ $p->id }}, '{{ addslashes($p->nama_pelatihan) }}')"
+                                            class="w-full text-left px-4 py-2.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 flex items-center gap-2">
+                                            <i class="bi bi-check-circle-fill"></i> Tandai Selesai
+                                        </button>
+                                        <form id="form-selesai-{{ $p->id }}" method="POST" action="{{ route('pelatihan.selesai', $p->id) }}" class="hidden">
+                                            @csrf @method('PATCH')
+                                        </form>
+                                    @endif
+
                                     @if($bisaDibatalkan)
                                         <button onclick="bukaKonfirmasiBatalkan({{ $p->id }}, '{{ addslashes($p->nama_pelatihan) }}')"
                                             class="w-full text-left px-4 py-2.5 text-xs font-semibold text-amber-600 hover:bg-amber-50 flex items-center gap-2">
                                             <i class="bi bi-x-circle"></i> Batalkan
                                         </button>
                                     @endif
+                                    
                                     @if($bisaDihapus)
                                         <button onclick="bukaKonfirmasiHapus({{ $p->id }}, '{{ addslashes($p->nama_pelatihan) }}')"
                                             class="w-full text-left px-4 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 border-t border-gray-100">
@@ -501,7 +521,7 @@
     </div>
 </div>
 
-{{-- MODAL INPUT NILAI BULK (DIPERBAIKI) --}}
+{{-- MODAL INPUT NILAI BULK --}}
 <div id="modalNilai" class="hidden fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center gap-3 bg-violet-50 rounded-t-2xl">
@@ -598,7 +618,7 @@
         });
     }
 
-    // --- Modal Input Nilai (INI YANG DIPERBAIKI) ---
+    // --- Modal Input Nilai (DENGAN VALIDASI ABSEN) ---
     function bukaModalNilai(data) {
         document.getElementById('formNilai').action = `/hrd/pelatihan/${data.pelatihan_id}/nilai`;
         document.getElementById('nilaiSubtitle').innerHTML = `<strong>${data.nama_pelatihan}</strong>`;
@@ -617,12 +637,17 @@
             </td></tr>`;
         } else {
             data.peserta.forEach((p, i) => {
+                const isHadir = p.status_kehadiran === 'hadir';
                 const tr = document.createElement('tr');
-                tr.className = 'hover:bg-gray-50';
+                tr.className = isHadir ? 'hover:bg-gray-50' : 'bg-gray-50 opacity-70';
+                
+                const disabledAttr = isHadir ? '' : 'disabled';
+                const placeholderText = isHadir ? '0-10' : 'Absen';
+
                 tr.innerHTML = `
                     <td class="px-3 py-2 text-gray-400">${i + 1}</td>
                     <td class="px-3 py-2">
-                        <div class="font-semibold text-gray-800">${p.nama}</div>
+                        <div class="font-semibold ${isHadir ? 'text-gray-800' : 'text-gray-500'}">${p.nama}</div>
                         <div class="text-[10px] text-gray-400">${p.jabatan} • ${p.departemen}</div>
                         <input type="hidden" name="karyawan_ids[]" value="${p.karyawan_id}">
                     </td>
@@ -630,24 +655,31 @@
                         <input type="number" step="0.01" min="0" max="10"
                             name="nilai_pretest[${p.karyawan_id}]"
                             value="${p.nilai_pretest ?? ''}"
-                            placeholder="0-10"
-                            class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-center text-xs focus:ring-2 focus:ring-violet-500 outline-none">
+                            placeholder="${placeholderText}"
+                            ${disabledAttr}
+                            class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-center text-xs focus:ring-2 focus:ring-violet-500 outline-none disabled:bg-gray-200 disabled:cursor-not-allowed">
                     </td>
                     <td class="px-3 py-2">
                         <input type="number" step="0.01" min="0" max="10"
                             name="nilai_postest[${p.karyawan_id}]"
                             value="${p.nilai_postest ?? ''}"
-                            placeholder="0-10"
+                            placeholder="${placeholderText}"
                             oninput="updateStatusBaris(this)"
                             data-status-target="status-${p.karyawan_id}"
-                            class="w-full border-2 border-violet-300 rounded-lg px-2 py-1.5 text-center text-sm font-bold focus:ring-2 focus:ring-violet-500 outline-none">
+                            ${disabledAttr}
+                            class="w-full border-2 border-violet-300 rounded-lg px-2 py-1.5 text-center text-sm font-bold focus:ring-2 focus:ring-violet-500 outline-none disabled:bg-gray-200 disabled:cursor-not-allowed disabled:border-gray-300">
                     </td>
                     <td class="px-3 py-2 text-center" id="status-${p.karyawan_id}"></td>
                 `;
                 tbody.appendChild(tr);
 
-                const inputPost = tr.querySelector('input[name^="nilai_postest"]');
-                updateStatusBaris(inputPost);
+                if (isHadir) {
+                    const inputPost = tr.querySelector('input[name^="nilai_postest"]');
+                    updateStatusBaris(inputPost);
+                } else {
+                    const statusEl = tr.querySelector(`#status-${p.karyawan_id}`);
+                    statusEl.innerHTML = '<span class="bg-gray-200 text-gray-500 font-bold text-[10px] px-2 py-1 rounded-full"><i class="bi bi-x-circle-fill"></i> ABSEN</span>';
+                }
             });
         }
 
@@ -678,8 +710,11 @@
         document.getElementById('editNama').value = data.nama_pelatihan;
         document.getElementById('editPenyelenggara').value = data.penyelenggara ?? '';
         document.getElementById('editKategori').value = data.kategori;
-        document.getElementById('editTglMulai').value = data.tanggal_mulai;
-        document.getElementById('editTglSelesai').value = data.tanggal_selesai ?? '';
+        
+        // ⬇️ PERBAIKAN: Potong string tanggal agar hanya mengambil YYYY-MM-DD ⬇️
+        document.getElementById('editTglMulai').value = data.tanggal_mulai ? data.tanggal_mulai.substring(0, 10) : '';
+        document.getElementById('editTglSelesai').value = data.tanggal_selesai ? data.tanggal_selesai.substring(0, 10) : '';
+        
         document.getElementById('editStatus').value = data.status;
         document.getElementById('editDeskripsi').value = data.deskripsi ?? '';
         document.getElementById('modalEditPelatihan').classList.remove('hidden');
@@ -708,6 +743,19 @@
     function tutupKonfirmasi() {
         document.getElementById('modal-konfirmasi').classList.add('hidden');
         _onOkCallback = null;
+    }
+
+    // ⬇️ FUNGSI KONFIRMASI TANDAI SELESAI ⬇️
+    function bukaKonfirmasiSelesai(id, nama) {
+        bukaKonfirmasi({
+            judul: 'Tandai Pelatihan Selesai?',
+            pesan: `Pelatihan <strong>${nama}</strong> akan ditandai sebagai selesai. Pastikan Anda sudah menginput semua nilai peserta.`,
+            labelOk: 'Ya, Tandai Selesai',
+            warnaOk: 'bg-emerald-600 hover:bg-emerald-700',
+            onOk: () => document.getElementById(`form-selesai-${id}`).submit(),
+            ikon: 'bi-check-circle-fill',
+            warnaIkon: 'bg-emerald-500'
+        });
     }
 
     function bukaKonfirmasiBatalkan(id, nama) {
